@@ -8,7 +8,7 @@ Control any Kodi with HomeKit and Homebridge: https://github.com/nfarina/homebri
 ![NPM](https://img.shields.io/npm/l/homebridge-kodi?style=flat-square)
 ![npm](https://img.shields.io/npm/dt/homebridge-kodi?style=flat-square)
 ![Snyk Vulnerabilities for GitHub Repo](https://img.shields.io/snyk/vulnerabilities/github/DeutscheMark/homebridge-kodi?style=flat-square)
-![Kodi](https://img.shields.io/badge/Minimum%20Kodi%20Version-%5E16-important?style=flat-squared)
+![Kodi](https://img.shields.io/badge/Minimum%20Kodi%20Version-%5E13%20(Gotham)-important?style=flat-squared)
 
 This is a plugin for [homebridge](https://github.com/nfarina/homebridge) that features controls and information about any running [Kodi](https://kodi.tv) in your network.
 You can download it via [npm](https://www.npmjs.com/package/homebridge-kodi).
