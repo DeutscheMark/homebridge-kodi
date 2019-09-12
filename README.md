@@ -1,2 +1,2 @@
 # homebridge-kodi
-Control any Kodi with HomeKit and Homebridge: https://github.com/nfarina/homebridge
+Homebridge plugin that provides details and controls for Kodi
