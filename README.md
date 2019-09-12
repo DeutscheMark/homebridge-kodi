@@ -42,21 +42,34 @@ Below is an example for all available parameters of this plugin.
 "platforms": [
     {
         "platform": "Kodi",
-        "name": "Kodi", // Optional - Default: "Kodi"
-        "host": "192.168.2.100", // IP or Host - Optional - Default: "localhost"
-        "port": "8080", // Optional - Default: "8080"
-        "username": "kodi", // Optional - Default: "kodi"
-        "password": "kodi", // Optional - Default: "kodi"
-        "polling": 1, // In seconds - Optional - Default: 10
-        "playerPlayPause": true, // Switch for Player Play/Pause - Optional - Default: true
-        "playerSeek": true, // Lightbulb for Player Seek - Optional - Default: true
-        "playerStop": true, // Switch for Player Stop - Optional - Default: true
-        "applicationVolume": true, // Switch for Application Volume - Optional - Default: true
-        "videoLibraryScan": true, // Switch for Video Library Scan - Optional - Default: true
-        "videoLibraryClean": true // Switch for Video Library Clean - Optional - Default: true
+        "name": "Kodi",
+        "host": "192.168.2.100",
+        "port": "8080",
+        "username": "kodi",
+        "password": "kodi",
+        "polling": 10,
+        "playerPlayPause": true,
+        "playerSeek": true,
+        "playerStop": true,
+        "applicationVolume": true,
+        "videoLibraryScan": true,
+        "videoLibraryClean": true
     }
 ]
 ```
+
+* `name` is the name of the Kodi instance, optional, default "Kodi"
+* `host` is the host or IP of the Kodi instance, optional, default "localhost"
+* `port` is the port set for the Kodi remote control, optional, default "8080"
+* `username` is the username set for the Kodi remote control, optional, default "kodi"
+* `password` is the password set for the Kodi remote control, optional, default "kodi"
+* `polling` is the polling rate in seconds for updating all accessories, optional, default 10
+* `playerPlayPause` is a switch for controlling the playback in Kodi, optional, default true
+* `playerSeek` is a light bulb for controlling the playback in Kodi and controlling the current position via a brightness slider, optional, default true
+* `playerStop` is an accessorry for stopping the current playback in Kodi, optional, default true
+* `applicationVolume` is an light bulb for controlling the volume in Kodi and controlling the current volume via a brightness slider, optional, default true
+* `videoLibraryScan` is a switch for starting a scanning of the video library in Kodi, optional, default true
+* `videoLibraryClean` is a switch for starting a cleaning of the video library in Kodi, optional, default true
 
 ## Known Problems
 
@@ -66,6 +79,8 @@ The development of this plugin is in an very early stage. Only use it if you are
 - Multiple running Kodis are support, but multiple platform configs are necessary: In this early stage of development you can use multipe running Kodis but you need to have multiple Kodi Platforms configured in your config file. That certainly changes in a future version of the plugin so that only one platform is needed.
 - Only Video Player and Video Library is supported: If you use Kodi for Music or other TV this plugin is not yet for you.
 - Bad logging: Right now any changes and informational updates are written to the logs. Therefor you might end up with large logs if you configure a low polling rate like every 1 second though it's of course possible.
+- videoLibraryScan does not abort the scanning when currently scanning and setting the switch to off.
+- videoLibraryClean does not abort the cleaning when currently cleaning and setting the switch to off.
 
 ## Contributors
 Many thanks go to
