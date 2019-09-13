@@ -17,9 +17,10 @@ const version = require('./package.json').version,
 let Service,
     Characteristic;
 
-let playerPlayPauseSwitchService,
+let playerLightbulbService,
+    playerPlaySwitchService,
+    playerPauseSwitchService,
     playerStopSwitchService,
-    playerSeekLightbulbService,
     applicationVolumeLightbulbService,
     videoLibraryScanSwitchService,
     videoLibraryCleanSwitchService;
@@ -46,12 +47,12 @@ function KodiPlatform(log, config, api) {
     this.username = this.config.username || 'kodi';
     this.password = this.config.password || 'kodi';
     this.polling = this.config.polling || 10;
-    this.playerPlayPauseConfig = this.config.playerPlayPause || true;
-    this.playerStopConfig = this.config.playerStop || true;
-    this.playerSeekConfig = this.config.playerSeek || true;
-    this.applicationVolumeConfig = this.config.applicationVolume || true;
-    this.videoLibraryScanConfig = this.config.videoLibraryScan || true;
-    this.videoLibraryCleanConfig = this.config.videoLibraryClean || true;
+    this.playerPlayConfig = this.config.playerPlay || false;
+    this.playerPauseConfig = this.config.playerPause || false;
+    this.playerStopConfig = this.config.playerStop || false;
+    this.applicationVolumeConfig = this.config.applicationVolume || false;
+    this.videoLibraryScanConfig = this.config.videoLibraryScan || false;
+    this.videoLibraryCleanConfig = this.config.videoLibraryClean || false;
 
     // Add Information Service
 
@@ -64,11 +65,22 @@ function KodiPlatform(log, config, api) {
 
     // Add Services
 
-    if (this.playerPlayPauseConfig) {
-        const name = this.name + " Player Playing";
+    const name = this.name + " Player";
+    this.log("Adding " + name);
+    playerLightbulbService = new Service.Lightbulb(name);
+    this.accessoriesList.push(new kodiPlayer.PlayerLightbulbAccessory(this, api, playerLightbulbService, name, version));
+
+    if (this.playerPlayConfig) {
+        const name = this.name + " Player Play";
         this.log("Adding " + name);
-        playerPlayPauseSwitchService = new Service.Switch(name);
-        this.accessoriesList.push(new kodiPlayer.PlayerPlayPauseSwitchAccessory(this, api, playerPlayPauseSwitchService, name, version));
+        playerPlaySwitchService = new Service.Switch(name);
+        this.accessoriesList.push(new kodiPlayer.PlayerPlaySwitchAccessory(this, api, playerPlaySwitchService, name, version));
+    }
+    if (this.playerPauseConfig) {
+        const name = this.name + " Player Pause";
+        this.log("Adding " + name);
+        playerPauseSwitchService = new Service.Switch(name);
+        this.accessoriesList.push(new kodiPlayer.PlayerPauseSwitchAccessory(this, api, playerPauseSwitchService, name, version));
     }
     if (this.playerStopConfig) {
         const name = this.name + " Player Stop";
@@ -76,14 +88,8 @@ function KodiPlatform(log, config, api) {
         playerStopSwitchService = new Service.Switch(name);
         this.accessoriesList.push(new kodiPlayer.PlayerStopSwitchAccessory(this, api, playerStopSwitchService, name, version));
     }
-    if (this.playerSeekConfig) {
-        const name = this.name + " Player Seek";
-        this.log("Adding " + name);
-        playerSeekLightbulbService = new Service.Lightbulb(name);
-        this.accessoriesList.push(new kodiPlayer.PlayerSeekLightbulbAccessory(this, api, playerSeekLightbulbService, name, version));
-    }
     if (this.applicationVolumeConfig) {
-        const name = this.name + " Application Volume";
+        const name = this.name + " Volume";
         this.log("Adding " + name);
         applicationVolumeLightbulbService = new Service.Lightbulb(name);
         this.accessoriesList.push(new kodiApplication.ApplicationVolumeLightbulbAccessory(this, api, applicationVolumeLightbulbService, name, version));
@@ -119,12 +125,14 @@ function KodiPlatform(log, config, api) {
     connection.kodiRequest(this.config, "Player.GetProperties", { "playerid": 1, "properties": ["speed"] })
         .then(result => {
             if (result.speed != 0) {
-                playerPlayPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(true);
-                playerSeekLightbulbService.getCharacteristic(Characteristic.On).updateValue(true);
+                playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(true);
+                playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(true);
+                playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
                 intervalUpdateKodiPlayer.start();
             } else {
-                playerPlayPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
-                playerSeekLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
+                playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
+                playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(false);
+                playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(true);
                 intervalUpdateKodiPlayer.stop();
             }
         })
@@ -137,8 +145,9 @@ function KodiPlatform(log, config, api) {
         // Player.OnPlay
         ws.on('Player.OnPlay', function () {
             this.log("Notification Received: Player.OnPlay");
-            playerPlayPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(true);
-            playerSeekLightbulbService.getCharacteristic(Characteristic.On).updateValue(true);
+            playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(true);
+            playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(true);
+            playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
             intervalUpdateKodiPlayer.start();
         }.bind(this));
         ws.subscribe('Player.OnPlay').catch(function (error) {
@@ -147,8 +156,9 @@ function KodiPlatform(log, config, api) {
         // Player.OnResume
         ws.on('Player.OnResume', function () {
             this.log("Notification Received: Player.OnResume");
-            playerPlayPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(true);
-            playerSeekLightbulbService.getCharacteristic(Characteristic.On).updateValue(true);
+            playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(true);
+            playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(true);
+            playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
             intervalUpdateKodiPlayer.start();
         }.bind(this));
         ws.subscribe('Player.OnResume').catch(function (error) {
@@ -157,8 +167,9 @@ function KodiPlatform(log, config, api) {
         // Player.OnPause
         ws.on('Player.OnPause', function () {
             this.log("Notification Received: Player.OnPause");
-            playerPlayPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
-            playerSeekLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
+            playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
+            playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(false);
+            playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(true);
             intervalUpdateKodiPlayer.stop();
         }.bind(this));
         ws.subscribe('Player.OnPause').catch(function (error) {
@@ -167,8 +178,9 @@ function KodiPlatform(log, config, api) {
         // Player.OnStop
         ws.on('Player.OnStop', function () {
             this.log("Notification Received: Player.OnStop");
-            playerPlayPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
-            playerSeekLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
+            playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
+            playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(false);
+            playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
             playerStopSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
             intervalUpdateKodiPlayer.stop();
         }.bind(this));
@@ -180,7 +192,7 @@ function KodiPlatform(log, config, api) {
             this.log("Notification Received: Player.OnSeek");
             connection.kodiRequest(this.config, "Player.GetProperties", { "playerid": 1, "properties": ["percentage"] })
                 .then(result => {
-                    playerSeekLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(Math.round(result.percentage));
+                    playerLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(Math.round(result.percentage));
                 })
                 .catch(error => this.log(error));
         }.bind(this));
@@ -193,12 +205,14 @@ function KodiPlatform(log, config, api) {
             connection.kodiRequest(this.config, "Player.GetProperties", { "playerid": 1, "properties": ["speed"] })
                 .then(result => {
                     if (result.speed != 0) {
-                        playerPlayPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(true);
-                        playerSeekLightbulbService.getCharacteristic(Characteristic.On).updateValue(true);
+                        playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(true);
+                        playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(true);
+                        playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
                         intervalUpdateKodiPlayer.start();
                     } else {
-                        playerPlayPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
-                        playerSeekLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
+                        playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
+                        playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(false);
+                        playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(true);
                         intervalUpdateKodiPlayer.stop();
                     }
                 })
@@ -270,25 +284,22 @@ KodiPlatform.prototype = {
             .then(result => {
                 let speed = result.speed != 0;
                 let percentage = Math.round(result.percentage);
-                playerPlayPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(speed);
-                playerSeekLightbulbService.getCharacteristic(Characteristic.On).updateValue(speed);
-                playerSeekLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(percentage);
+                playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(speed);
+                playerLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(percentage);
+                playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(speed);
+                playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(!speed);
 
                 connection.kodiRequest(this.config, "Player.GetItem", { "playerid": 1, "properties": ["showtitle", "season", "episode", "duration"] })
                     .then(result => {
                         let showtitle = typeof result.item.showtitle !== 'undefined' ? result.item.showtitle : "-";
                         let seasonAndEpisode = "S" + leftPad(result.item.season, 2, 0) + "E" + leftPad(result.item.episode, 2, 0);
                         let label = typeof result.item.label !== 'undefined' ? result.item.label : "-";
-                        playerPlayPauseSwitchService.getCharacteristic(Characteristic.IPAdd).updateValue(showtitle);
-                        playerPlayPauseSwitchService.getCharacteristic(Characteristic.Host).updateValue(label);
-                        playerSeekLightbulbService.getCharacteristic(Characteristic.IPAdd).updateValue(showtitle);
-                        playerSeekLightbulbService.getCharacteristic(Characteristic.Host).updateValue(label);
+                        playerLightbulbService.getCharacteristic(Characteristic.ShowTitle).updateValue(showtitle);
+                        playerLightbulbService.getCharacteristic(Characteristic.EpisodeTitle).updateValue(label);
                         if (result.item.season && result.item.episode) {
-                            playerPlayPauseSwitchService.getCharacteristic(Characteristic.Caller).updateValue(seasonAndEpisode);
-                            playerSeekLightbulbService.getCharacteristic(Characteristic.Caller).updateValue(seasonAndEpisode);
+                            playerLightbulbService.getCharacteristic(Characteristic.SeasonEpisode).updateValue(seasonAndEpisode);
                         } else {
-                            playerPlayPauseSwitchService.getCharacteristic(Characteristic.Caller).updateValue("-");
-                            playerSeekLightbulbService.getCharacteristic(Characteristic.Caller).updateValue("-");
+                            playerLightbulbService.getCharacteristic(Characteristic.SeasonEpisode).updateValue("-");
                         }
 
                         connection.kodiRequest(this.config, "Player.GetProperties", { "playerid": 1, "properties": ["time", "totaltime"] })
@@ -296,8 +307,7 @@ KodiPlatform.prototype = {
                                 let timeAndTotaltime = result.time.hours + ":" + leftPad(result.time.minutes, 2, 0) + ":" + leftPad(result.time.seconds, 2, 0) + " / " +
                                     result.totaltime.hours + ":" + leftPad(result.totaltime.minutes, 2, 0) + ":" + leftPad(result.totaltime.seconds, 2, 0);
                                 this.log("Setting Info: " + showtitle + " " + seasonAndEpisode + " \"" + label + "\" - " + timeAndTotaltime + " (" + percentage + " %)");
-                                playerPlayPauseSwitchService.getCharacteristic(Characteristic.Adresse).updateValue(timeAndTotaltime);
-                                playerSeekLightbulbService.getCharacteristic(Characteristic.Adresse).updateValue(timeAndTotaltime);
+                                playerLightbulbService.getCharacteristic(Characteristic.Position).updateValue(timeAndTotaltime);
                             })
                             .catch(error => this.log(error));
                     })
