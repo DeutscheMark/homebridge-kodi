@@ -1,8 +1,12 @@
 {
     "name": "homebridge-kodi",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "Homebridge plugin that provides details and controls for Kodi",
-    "author": "Daniel Müller",
+    "author": {
+        "name": "Daniel Müller",
+        "email": "deutschemark88@gmail.com",
+        "url": "https://github.com/DeutscheMark"
+    },
     "keywords": [
         "homebridge",
         "homebridge-plugin",
@@ -35,8 +39,8 @@
     },
     "homepage": "https://github.com/DeutscheMark/homebridge-kodi#readme",
     "engines": {
-        "node": ">=0.12.0",
-        "homebridge": ">=0.2.0"
+        "node": ">=7.10.1",
+        "homebridge": ">=0.4.50"
     },
     "dependencies": {
         "debug": "^4.1.1",
