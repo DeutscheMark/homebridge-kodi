@@ -4,10 +4,12 @@ Control any Kodi with HomeKit and Homebridge: https://github.com/nfarina/homebri
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/DeutscheMark/homebridge-kodi?style=flat-square)
 ![GitHub Release Date](https://img.shields.io/github/release-date/DeutscheMark/homebridge-kodi?style=flat-square)
 ![GitHub](https://img.shields.io/github/license/DeutscheMark/homebridge-kodi?style=flat-square)
+
 ![node](https://img.shields.io/node/v/homebridge-kodi?style=flat-square)
 ![NPM](https://img.shields.io/npm/l/homebridge-kodi?style=flat-square)
 ![npm](https://img.shields.io/npm/dt/homebridge-kodi?style=flat-square)
 ![Snyk Vulnerabilities for GitHub Repo](https://img.shields.io/snyk/vulnerabilities/github/DeutscheMark/homebridge-kodi?style=flat-square)
+
 ![Kodi](https://img.shields.io/badge/Minimum%20Kodi%20Version-v12.0%20(Frodo)-important?style=flat-squared)
 ![Kodi](https://img.shields.io/badge/Latest%20Kodi%20Version-v18.4%20(Leia)-important?style=flat-squared)
 
