@@ -4,8 +4,7 @@ const platformName = 'homebridge-kodi',
     platformPrettyName = 'Kodi',
     debug = require('debug')('homebridge-kodi'),
     WebSocket = require('rpc-websockets').Client,
-    setIntervalPlus = require('setinterval-plus'),
-    leftPad = require('left-pad');
+    setIntervalPlus = require('setinterval-plus');
 
 const version = require('./package.json').version,
     kodiVideoLibrary = require('./lib/kodiVideoLibrary'),
@@ -292,7 +291,7 @@ KodiPlatform.prototype = {
                 connection.kodiRequest(this.config, "Player.GetItem", { "playerid": 1, "properties": ["showtitle", "season", "episode", "duration"] })
                     .then(result => {
                         let showtitle = typeof result.item.showtitle !== 'undefined' ? result.item.showtitle : "-";
-                        let seasonAndEpisode = "S" + leftPad(result.item.season, 2, 0) + "E" + leftPad(result.item.episode, 2, 0);
+                        let seasonAndEpisode = "S" + result.item.season.padStart(2, 0) + "E" + result.item.episode.padStart(2, 0);
                         let label = typeof result.item.label !== 'undefined' ? result.item.label : "-";
                         playerLightbulbService.getCharacteristic(Characteristic.ShowTitle).updateValue(showtitle);
                         playerLightbulbService.getCharacteristic(Characteristic.EpisodeTitle).updateValue(label);
@@ -304,8 +303,8 @@ KodiPlatform.prototype = {
 
                         connection.kodiRequest(this.config, "Player.GetProperties", { "playerid": 1, "properties": ["time", "totaltime"] })
                             .then(result => {
-                                let timeAndTotaltime = result.time.hours + ":" + leftPad(result.time.minutes, 2, 0) + ":" + leftPad(result.time.seconds, 2, 0) + " / " +
-                                    result.totaltime.hours + ":" + leftPad(result.totaltime.minutes, 2, 0) + ":" + leftPad(result.totaltime.seconds, 2, 0);
+                                let timeAndTotaltime = result.time.hours + ":" + result.time.minutes.padStart(2, 0) + ":" + result.time.seconds.padStart(2, 0) + " / " +
+                                    result.totaltime.hours + ":" + result.totaltime.minutes.padStart(2, 0) + ":" + result.totaltime.seconds.padStart(2, 0);
                                 this.log("Setting Info: " + showtitle + " " + seasonAndEpisode + " \"" + label + "\" - " + timeAndTotaltime + " (" + percentage + " %)");
                                 playerLightbulbService.getCharacteristic(Characteristic.Position).updateValue(timeAndTotaltime);
                             })
