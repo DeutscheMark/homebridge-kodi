@@ -291,7 +291,7 @@ KodiPlatform.prototype = {
                 connection.kodiRequest(this.config, "Player.GetItem", { "playerid": 1, "properties": ["showtitle", "season", "episode", "duration"] })
                     .then(result => {
                         let showtitle = typeof result.item.showtitle !== 'undefined' ? result.item.showtitle : "-";
-                        let seasonAndEpisode = "S" + result.item.season.toStart().padStart(2, 0) + "E" + result.item.episode.toStart().padStart(2, 0);
+                        let seasonAndEpisode = "S" + result.item.season.toString().padStart(2, '0') + "E" + result.item.episode.toString().padStart(2, '0');
                         let label = typeof result.item.label !== 'undefined' ? result.item.label : "-";
                         playerLightbulbService.getCharacteristic(Characteristic.ShowTitle).updateValue(showtitle);
                         playerLightbulbService.getCharacteristic(Characteristic.EpisodeTitle).updateValue(label);
@@ -303,8 +303,8 @@ KodiPlatform.prototype = {
 
                         connection.kodiRequest(this.config, "Player.GetProperties", { "playerid": 1, "properties": ["time", "totaltime"] })
                             .then(result => {
-                                let timeAndTotaltime = result.time.hours + ":" + result.time.minutes.toStart().padStart(2, 0) + ":" + result.time.seconds.toStart().padStart(2, 0) + " / " +
-                                    result.totaltime.hours + ":" + result.totaltime.minutes.toStart().padStart(2, 0) + ":" + result.totaltime.seconds.toStart().padStart(2, 0);
+                                let timeAndTotaltime = result.time.hours + ":" + result.time.minutes.toString().padStart(2, '0') + ":" + result.time.seconds.toString().padStart(2, '0') + " / " +
+                                    result.totaltime.hours + ":" + result.totaltime.minutes.toString().padStart(2, '0') + ":" + result.totaltime.seconds.toString().padStart(2, '0');
                                 this.log("Setting Info: " + showtitle + " " + seasonAndEpisode + " \"" + label + "\" - " + timeAndTotaltime + " (" + percentage + " %)");
                                 playerLightbulbService.getCharacteristic(Characteristic.Position).updateValue(timeAndTotaltime);
                             })
