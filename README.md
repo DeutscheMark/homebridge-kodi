@@ -22,7 +22,7 @@ Feel free to leave any feedback or suggested features [here](https://github.com/
 - Get controls for Kodi Player Play, Pause, Seek, Stop and Video Library Scan and Clean (Music Library not yet supported) and Volume
 - You can add more than one platform to support more running Kodi instances (just give them different names, currently buggy when playback at the same time)
 - See Information about the current playing show, season, episode and title in the Eve App
-- See Information about the current playing item's time, totalTime and percentage Played (as brightness) in the Eve App
+- See Information about the current playing item's time, totalTime and percentage played in the Eve App
 
 ## Kodi Preparations
 
