@@ -7,9 +7,9 @@ Control any Kodi with HomeKit and Homebridge: https://github.com/nfarina/homebri
 ![GitHub](https://img.shields.io/github/license/DeutscheMark/homebridge-kodi?style=flat-square)
 
 ![node](https://img.shields.io/node/v/homebridge-kodi?style=flat-square)
-![homebridge](https://img.shields.io/badge/homebridge->=0.4.50-green?style=flat-squared)
-![Kodi](https://img.shields.io/badge/Minimum%20Kodi%20Version-12.0%20(Frodo)-informational?style=flat-squared)
-![Kodi](https://img.shields.io/badge/Latest%20Kodi%20Version-18.4%20(Leia)-informational?style=flat-squared)
+![homebridge](https://img.shields.io/badge/homebridge->=0.4.50-green?style=flat-square)
+![Kodi](https://img.shields.io/badge/Minimum%20Kodi%20Version-12.0%20(Frodo)-informational?style=flat-square)
+![Kodi](https://img.shields.io/badge/Latest%20Kodi%20Version-18.4%20(Leia)-informational?style=flat-square)
 
 <img src= "https://user-images.githubusercontent.com/19808920/58770949-bd9c7900-857f-11e9-8558-5dfaffddffda.png" alt="Homebridge-Logo" width="150"><img src="https://upload.wikimedia.org/wikipedia/commons/2/25/Kodi-logo-Thumbnail-light-transparent.png" alt="Kodi-Logo" width="150">
 
