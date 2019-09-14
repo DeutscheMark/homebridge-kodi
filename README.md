@@ -71,7 +71,7 @@ Below is an example for all available parameters and accessories of this plugin.
 * `playerPlay` is an alternative switch for controlling the playback in Kodi, optional, default false
 * `playerPause` is a switch for pausing the current playback in Kodi, optional, default false
 * `playerStop` is a switch for stopping the current playback in Kodi, optional, default false
-* `applicationVolume` is an light bulb for controlling the volume in Kodi and controlling the current volume via a brightness slider, optional, default false
+* `applicationVolume` is a light bulb for controlling the volume in Kodi and controlling the current volume via a brightness slider, optional, default false
 * `videoLibraryScan` is a switch for starting a scanning of the video library in Kodi, optional, default false
 * `videoLibraryClean` is a switch for starting a cleaning of the video library in Kodi, optional, default false
 

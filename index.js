@@ -291,7 +291,10 @@ KodiPlatform.prototype = {
                 connection.kodiRequest(this.config, "Player.GetItem", { "playerid": 1, "properties": ["showtitle", "season", "episode", "duration"] })
                     .then(result => {
                         let showtitle = typeof result.item.showtitle !== 'undefined' ? result.item.showtitle : "-";
-                        let seasonAndEpisode = "S" + result.item.season.toString().padStart(2, '0') + "E" + result.item.episode.toString().padStart(2, '0');
+                        let seasonAndEpisode = "-";
+                        if (typeof result.item.season !== 'undefined' && typeof result.item.episode !== 'undefined') {
+                            seasonAndEpisode = "S" + result.item.season.toString().padStart(2, '0') + "E" + result.item.episode.toString().padStart(2, '0');
+                        }
                         let label = typeof result.item.label !== 'undefined' ? result.item.label : "-";
                         playerLightbulbService.getCharacteristic(Characteristic.ShowTitle).updateValue(showtitle);
                         playerLightbulbService.getCharacteristic(Characteristic.EpisodeTitle).updateValue(label);
