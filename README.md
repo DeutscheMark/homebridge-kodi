@@ -79,12 +79,12 @@ Below is an example for all available parameters and accessories of this plugin.
 
 The development of this plugin is in an very early stage. Only use it if you are aware of what you are doing. A wrong configuration can lead to crash of the whole homebridge.
 
-- Only running Kodis are supported: If the Kodi that you configured is not running a lot of error logs could be written when reading the accessories in your app. Error handling is work in progress.
+- Only running Kodis are supported: If the Kodi that you configured is not running a lot of error logs could be written when reading the accessories in your app. It might be needed to restart Homebridge if a running Kodi closes as the websocket disconnects and does not reconnect currently. Error handling is still work in progress.
 - Multiple running Kodis are support, but multiple platform configs are necessary: In this early stage of development you can use multipe running Kodis but you need to have multiple Kodi Platforms configured in your config file. That certainly changes in a future version of the plugin so that only one platform is needed.
 - Only Video Player and Video Library is supported: If you use Kodi for Music or other this plugin is not yet for you. But stay tuned.
 - Bad logging: Right now any changes and informational updates are written to the logs. Therefor you might end up with large logs if you configure a low polling rate like every 1 second though it's of course possible.
-- videoLibraryScan does not abort the scanning when currently scanning and setting the switch to off. The API is missing this feature unfortunately.
-- videoLibraryClean does not abort the cleaning when currently cleaning and setting the switch to off. The API is missing this feature unfortunately.
+- videoLibraryScan: The current scan status is not displayed in HomeKit. Also it does not abort the scanning when currently scanning and setting the switch to off. The API is missing these features unfortunately.
+- videoLibraryClean: The current clean status is not displayed in HomeKit. Also it does not abort the cleaning when currently cleaning and setting the switch to off. The API is missing this feature unfortunately.
 
 ## Contributors
 Many thanks go to
