@@ -252,7 +252,6 @@ function KodiPlatform(log, config, api) {
         // VideoLibrary.OnScanStarted
         ws.on('VideoLibrary.OnScanStarted', function () {
             this.log("Notification Received: VideoLibrary.OnScanStarted");
-            videoLibraryScanSwitchService.getCharacteristic(Characteristic.On).updateValue(true);
         }.bind(this));
         ws.subscribe('VideoLibrary.OnScanStarted').catch(function (error) {
             console.log(error);
@@ -268,7 +267,6 @@ function KodiPlatform(log, config, api) {
         // VideoLibrary.OnCleanStarted
         ws.on('VideoLibrary.OnCleanStarted', function () {
             this.log("Notification Received: VideoLibrary.OnCleanStarted");
-            videoLibraryCleanSwitchService.getCharacteristic(Characteristic.On).updateValue(true);
         }.bind(this));
         ws.subscribe('VideoLibrary.OnCleanStarted').catch(function (error) {
             console.log(error);
