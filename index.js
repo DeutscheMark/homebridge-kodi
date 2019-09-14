@@ -177,11 +177,17 @@ function KodiPlatform(log, config, api) {
         // Player.OnStop
         ws.on('Player.OnStop', function () {
             this.log("Notification Received: Player.OnStop");
+            intervalUpdateKodiPlayer.stop();
             playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
+            playerLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(0);
+            playerLightbulbService.getCharacteristic(Characteristic.Type).updateValue("-");
+            playerLightbulbService.getCharacteristic(Characteristic.Label).updateValue("-");
+            playerLightbulbService.getCharacteristic(Characteristic.ShowTitle).updateValue("-");
+            playerLightbulbService.getCharacteristic(Characteristic.SeasonEpisode).updateValue("-");
+            playerLightbulbService.getCharacteristic(Characteristic.Position).updateValue("0:00:00 / 0:00:00");
             playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(false);
             playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
             playerStopSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
-            intervalUpdateKodiPlayer.stop();
         }.bind(this));
         ws.subscribe('Player.OnStop').catch(function (error) {
             console.log(error);
@@ -204,15 +210,21 @@ function KodiPlatform(log, config, api) {
             connection.kodiRequest(this.config, "Player.GetProperties", { "playerid": 1, "properties": ["speed"] })
                 .then(result => {
                     if (result.speed != 0) {
+                        intervalUpdateKodiPlayer.start();
                         playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(true);
                         playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(true);
                         playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
-                        intervalUpdateKodiPlayer.start();
                     } else {
+                        intervalUpdateKodiPlayer.stop();
                         playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
+                        playerLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(0);
+                        playerLightbulbService.getCharacteristic(Characteristic.Type).updateValue("-");
+                        playerLightbulbService.getCharacteristic(Characteristic.Label).updateValue("-");
+                        playerLightbulbService.getCharacteristic(Characteristic.ShowTitle).updateValue("-");
+                        playerLightbulbService.getCharacteristic(Characteristic.SeasonEpisode).updateValue("-");
+                        playerLightbulbService.getCharacteristic(Characteristic.Position).updateValue("0:00:00 / 0:00:00");
                         playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(false);
                         playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(true);
-                        intervalUpdateKodiPlayer.stop();
                     }
                 })
                 .catch(error => this.log(error));
@@ -290,25 +302,27 @@ KodiPlatform.prototype = {
 
                 connection.kodiRequest(this.config, "Player.GetItem", { "playerid": 1, "properties": ["showtitle", "season", "episode", "duration"] })
                     .then(result => {
-                        let showtitle = typeof result.item.showtitle !== 'undefined' ? result.item.showtitle : "-";
-                        let seasonAndEpisode = "-";
-                        if (typeof result.item.season !== 'undefined' && typeof result.item.episode !== 'undefined') {
-                            seasonAndEpisode = "S" + result.item.season.toString().padStart(2, '0') + "E" + result.item.episode.toString().padStart(2, '0');
+                        let type = result.item.type != 'unknown' ? result.item.type : "-";
+                        let label = result.item.label != 'unknown' ? result.item.label : "-";
+                        let showtitle = typeof result.item.showtitle !== 'undefined' && result.item.showtitle != '' ? result.item.showtitle : "-";
+                        let seasonEpisode = "-";
+                        if (result.item.type == 'episode') {
+                            if ((result.item.season != -1 && result.item.episode != -1) || (typeof result.item.season !== 'undefined' && typeof result.item.episode !== 'undefined')) {
+                                seasonEpisode = "S" + result.item.season.toString().padStart(2, '0') + "E" + result.item.episode.toString().padStart(2, '0');
+                            } else if ((result.item.season == -1 && result.item.episode != -1) || (typeof result.item.season == 'undefined' && typeof result.item.episode !== 'undefined')) {
+                                seasonEpisode = "E" + result.item.episode.toString().padStart(2, '0');
+                            }
                         }
-                        let label = typeof result.item.label !== 'undefined' ? result.item.label : "-";
+                        playerLightbulbService.getCharacteristic(Characteristic.Type).updateValue(type);
+                        playerLightbulbService.getCharacteristic(Characteristic.Label).updateValue(label);
                         playerLightbulbService.getCharacteristic(Characteristic.ShowTitle).updateValue(showtitle);
-                        playerLightbulbService.getCharacteristic(Characteristic.EpisodeTitle).updateValue(label);
-                        if (result.item.season && result.item.episode) {
-                            playerLightbulbService.getCharacteristic(Characteristic.SeasonEpisode).updateValue(seasonAndEpisode);
-                        } else {
-                            playerLightbulbService.getCharacteristic(Characteristic.SeasonEpisode).updateValue("-");
-                        }
+                        playerLightbulbService.getCharacteristic(Characteristic.SeasonEpisode).updateValue(seasonEpisode);
 
                         connection.kodiRequest(this.config, "Player.GetProperties", { "playerid": 1, "properties": ["time", "totaltime"] })
                             .then(result => {
                                 let timeAndTotaltime = result.time.hours + ":" + result.time.minutes.toString().padStart(2, '0') + ":" + result.time.seconds.toString().padStart(2, '0') + " / " +
                                     result.totaltime.hours + ":" + result.totaltime.minutes.toString().padStart(2, '0') + ":" + result.totaltime.seconds.toString().padStart(2, '0');
-                                this.log("Setting Info: " + showtitle + " " + seasonAndEpisode + " \"" + label + "\" - " + timeAndTotaltime + " (" + percentage + " %)");
+                                this.log("Setting Info (" + type + "): " + showtitle + " " + seasonEpisode + " \"" + label + "\" - " + timeAndTotaltime + " (" + percentage + " %)");
                                 playerLightbulbService.getCharacteristic(Characteristic.Position).updateValue(timeAndTotaltime);
                             })
                             .catch(error => this.log(error));
