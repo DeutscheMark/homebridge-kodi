@@ -11,6 +11,8 @@ Control any Kodi with HomeKit and Homebridge: https://github.com/nfarina/homebri
 ![Kodi](https://img.shields.io/badge/Minimum%20Kodi%20Version-12.0%20(Frodo)-informational?style=flat-squared)
 ![Kodi](https://img.shields.io/badge/Latest%20Kodi%20Version-18.4%20(Leia)-informational?style=flat-squared)
 
+<img src= "https://user-images.githubusercontent.com/19808920/58770949-bd9c7900-857f-11e9-8558-5dfaffddffda.png" alt="Homebridge-Logo" width="150"><img src="https://upload.wikimedia.org/wikipedia/commons/2/25/Kodi-logo-Thumbnail-light-transparent.png" alt="Kodi-Logo" width="150">
+
 This is a plugin for [homebridge](https://github.com/nfarina/homebridge) that features controls and information about any running [Kodi](https://kodi.tv) in your network.
 You can download it via [npm](https://www.npmjs.com/package/homebridge-kodi).
 
@@ -37,7 +39,9 @@ You can find a detailed tutorial on how to enable remote access in Kodi [here](h
 
 ## Configuration
 
-Below is an example for all available parameters and accessories of this plugin activated.
+By default a lightbulb accessory for controlling the current playback (on/off for Play/Pause and brightness for Seek) and getting information (e.g. in Eve) of the current playing item is exposed. This is the main accessory of this plugin but you can enable additional accessories in your config.
+
+Below is an example for all available parameters and accessories of this plugin.
 
 ```json
 "platforms": [
