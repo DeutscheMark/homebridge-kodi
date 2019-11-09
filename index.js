@@ -123,17 +123,28 @@ function KodiPlatform(log, config, api) {
 
     connection.kodiRequest(this.config, "Player.GetProperties", { "playerid": 1, "properties": ["speed"] })
         .then(result => {
-            if (result.speed != 0) {
-                playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(true);
-                playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(true);
-                playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
-                intervalUpdateKodiPlayer.start();
-            } else {
-                playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
-                playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(false);
-                playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(true);
-                intervalUpdateKodiPlayer.stop();
-            }
+            connection.kodiRequest(this.config, "Player.GetItem", { "playerid": 1 })
+                .then(itemresult => {
+                    if (itemresult.item.id && result.speed != 0 ? result.speed != 0 : false) {
+                        playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(true);
+                        playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(true);
+                        playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
+                        intervalUpdateKodiPlayer.start();
+                    } else if (itemresult.item.id && result.speed == 0 ? result.speed == 0 : false) {
+                        playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
+                        playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(false);
+                        playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(true);
+                        intervalUpdateKodiPlayer.stop();
+                    } else {
+                        playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
+                        playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(false);
+                        playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
+                        intervalUpdateKodiPlayer.stop();
+                    }
+                })
+                .catch(error => {
+                    this.log(error);
+                });
         })
         .catch(error => this.log(error));
 
@@ -209,11 +220,11 @@ function KodiPlatform(log, config, api) {
             this.log("Notification Received: Application.OnSpeedChanged");
             connection.kodiRequest(this.config, "Player.GetProperties", { "playerid": 1, "properties": ["speed"] })
                 .then(result => {
-                    if (result.speed != 0) {
+                    let playing = result.speed != 0 ? result.speed != 0 : false;
+                    if (playing) {
                         intervalUpdateKodiPlayer.start();
                         playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(true);
                         playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(true);
-                        playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
                     } else {
                         intervalUpdateKodiPlayer.stop();
                         playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
@@ -224,7 +235,6 @@ function KodiPlatform(log, config, api) {
                         playerLightbulbService.getCharacteristic(Characteristic.SeasonEpisode).updateValue("-");
                         playerLightbulbService.getCharacteristic(Characteristic.Position).updateValue("0:00:00 / 0:00:00");
                         playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(false);
-                        playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(true);
                     }
                 })
                 .catch(error => this.log(error));
@@ -237,12 +247,11 @@ function KodiPlatform(log, config, api) {
             this.log("Notification Received: Application.OnVolumeChanged");
             connection.kodiRequest(this.config, "Application.GetProperties", { "properties": ["muted", "volume"] })
                 .then(result => {
-                    if (result.muted === true && result.volume == 0) {
-                        applicationVolumeLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
-                    } else {
-                        applicationVolumeLightbulbService.getCharacteristic(Characteristic.On).updateValue(true);
-                    }
-                    applicationVolumeLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(result.volume);
+                    let muted = result.muted ? result.muted : false;
+                    let volume = result.volume ? result.volume : 0;
+                    this.log('muted: ' + muted + ' - volume: ' + volume);
+                    applicationVolumeLightbulbService.getCharacteristic(Characteristic.On).updateValue(!muted && volume != 0);
+                    applicationVolumeLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(volume);
                 })
                 .catch(error => this.log(error));
         }.bind(this));
@@ -291,8 +300,8 @@ KodiPlatform.prototype = {
     updateKodiPlayer: async function () {
         connection.kodiRequest(this.config, "Player.GetProperties", { "playerid": 1, "properties": ["speed", "percentage"] })
             .then(result => {
-                let speed = result.speed != 0;
-                let percentage = Math.round(result.percentage);
+                let speed = result.speed != 0 ? result.speed != 0 : 0;
+                let percentage = Math.round(result.percentage ? result.percentage : 0);
                 playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(speed);
                 playerLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(percentage);
                 playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(speed);
@@ -301,7 +310,7 @@ KodiPlatform.prototype = {
                 connection.kodiRequest(this.config, "Player.GetItem", { "playerid": 1, "properties": ["showtitle", "season", "episode", "duration"] })
                     .then(result => {
                         let type = result.item.type != 'unknown' ? result.item.type : "-";
-                        let label = result.item.label != 'unknown' ? result.item.label : "-";
+                        let label = result.item.label != '' ? result.item.label : "-";
                         let showtitle = typeof result.item.showtitle !== 'undefined' && result.item.showtitle != '' ? result.item.showtitle : "-";
                         let seasonEpisode = "-";
                         if (result.item.type == 'episode') {
