@@ -1,3 +1,5 @@
+# Changelog
+
 ## 0.1.3
 
 * Fixed playerPause & playerStop & applicationVolume.
