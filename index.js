@@ -64,45 +64,45 @@ function KodiPlatform(log, config, api) {
 
     // Add Services
 
-    const name = this.name + " Player";
+    let name = this.name + " Player";
     this.log("Adding " + name);
     playerLightbulbService = new Service.Lightbulb(name);
     this.accessoriesList.push(new kodiPlayer.PlayerLightbulbAccessory(this, api, playerLightbulbService, name, version));
 
+    name = this.name + " Player Play";
+    playerPlaySwitchService = new Service.Switch(name);
     if (this.playerPlayConfig) {
-        const name = this.name + " Player Play";
         this.log("Adding " + name);
-        playerPlaySwitchService = new Service.Switch(name);
         this.accessoriesList.push(new kodiPlayer.PlayerPlaySwitchAccessory(this, api, playerPlaySwitchService, name, version));
     }
+    name = this.name + " Player Pause";
+    playerPauseSwitchService = new Service.Switch(name);
     if (this.playerPauseConfig) {
-        const name = this.name + " Player Pause";
         this.log("Adding " + name);
-        playerPauseSwitchService = new Service.Switch(name);
         this.accessoriesList.push(new kodiPlayer.PlayerPauseSwitchAccessory(this, api, playerPauseSwitchService, name, version));
     }
+    name = this.name + " Player Stop";
+    playerStopSwitchService = new Service.Switch(name);
     if (this.playerStopConfig) {
-        const name = this.name + " Player Stop";
         this.log("Adding " + name);
-        playerStopSwitchService = new Service.Switch(name);
         this.accessoriesList.push(new kodiPlayer.PlayerStopSwitchAccessory(this, api, playerStopSwitchService, name, version));
     }
+    name = this.name + " Volume";
+    applicationVolumeLightbulbService = new Service.Lightbulb(name);
     if (this.applicationVolumeConfig) {
-        const name = this.name + " Volume";
         this.log("Adding " + name);
-        applicationVolumeLightbulbService = new Service.Lightbulb(name);
         this.accessoriesList.push(new kodiApplication.ApplicationVolumeLightbulbAccessory(this, api, applicationVolumeLightbulbService, name, version));
     }
+    name = this.name + " Video Library Scan";
+    videoLibraryScanSwitchService = new Service.Switch(name);
     if (this.videoLibraryScanConfig) {
-        const name = this.name + " Video Library Scan";
         this.log("Adding " + name);
-        videoLibraryScanSwitchService = new Service.Switch(name);
         this.accessoriesList.push(new kodiVideoLibrary.VideoLibraryScanSwitchAccessory(this, api, videoLibraryScanSwitchService, name, version));
     }
+    name = this.name + " Video Library Clean";
+    videoLibraryCleanSwitchService = new Service.Switch(name);
     if (this.videoLibraryCleanConfig) {
-        const name = this.name + " Video Library Clean";
         this.log("Adding " + name);
-        videoLibraryCleanSwitchService = new Service.Switch(name);
         this.accessoriesList.push(new kodiVideoLibrary.VideoLibraryCleanSwitchAccessory(this, api, videoLibraryCleanSwitchService, name, version));
     }
 
