@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.4
+
+* Fixed error messages when using minimal config.
+
 ## 0.1.3
 
 * Fixed playerPause & playerStop & applicationVolume.
