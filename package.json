@@ -1,6 +1,6 @@
 {
     "name": "homebridge-kodi",
-    "version": "0.2.1",
+    "version": "0.2.2",
     "description": "Homebridge plugin that provides details and controls for Kodi",
     "author": {
         "name": "Daniel Müller",
