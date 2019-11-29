@@ -7,14 +7,15 @@ const platformName = 'homebridge-kodi',
     setIntervalPlus = require('setinterval-plus');
 
 const version = require('./package.json').version,
-    kodiVideoLibrary = require('./lib/kodiVideoLibrary'),
+    kodi = require('./lib/kodi'),
     kodiPlayer = require('./lib/kodiPlayer'),
     kodiApplication = require('./lib/kodiApplication'),
-    HomeKitTypes = require('./lib/types.js'),
-    connection = require('./lib/connection.js');
+    kodiVideoLibrary = require('./lib/kodiVideoLibrary'),
+    kodiAudioLibrary = require('./lib/kodiAudioLibrary');
 
 let Service,
-    Characteristic;
+    Characteristic,
+    CustomCharacteristic;
 
 let playerLightbulbService,
     playerPlaySwitchService,
@@ -22,7 +23,13 @@ let playerLightbulbService,
     playerStopSwitchService,
     applicationVolumeLightbulbService,
     videoLibraryScanSwitchService,
-    videoLibraryCleanSwitchService;
+    videoLibraryCleanSwitchService,
+    audioLibraryScanSwitchService,
+    audioLibraryCleanSwitchService;
+
+let intervalStatusKodiPlayer,
+    intervalSubscriptionsKodiPlayer,
+    intervalUpdateKodiPlayer;
 
 module.exports = function (homebridge) {
     Service = homebridge.hap.Service;
@@ -32,13 +39,13 @@ module.exports = function (homebridge) {
 }
 
 function KodiPlatform(log, config, api) {
-    console.log("Init Homebridge-Kodi");
-    this.log = log;
     this.debug = debug;
     this.config = config;
+    this.log = this.config.debug ? log : () => { };
+    this.log.error = log.error;
     this.accessoriesList = [];
 
-    HomeKitTypes.registerWith(api.hap);
+    this.log("Init Homebridge-Kodi");
 
     this.name = this.config.name;
     this.host = this.config.host || 'localhost';
@@ -52,6 +59,8 @@ function KodiPlatform(log, config, api) {
     this.applicationVolumeConfig = this.config.applicationVolume || false;
     this.videoLibraryScanConfig = this.config.videoLibraryScan || false;
     this.videoLibraryCleanConfig = this.config.videoLibraryClean || false;
+    this.audioLibraryScanConfig = this.config.audioLibraryScan || false;
+    this.audioLibraryCleanConfig = this.config.audioLibraryClean || false;
 
     // Add Information Service
 
@@ -63,6 +72,8 @@ function KodiPlatform(log, config, api) {
         .setCharacteristic(Characteristic.FirmwareRevision, version);
 
     // Add Services
+
+    CustomCharacteristic = require('./util/characteristics')(api);
 
     let name = this.name + " Player";
     this.log("Adding " + name);
@@ -105,32 +116,58 @@ function KodiPlatform(log, config, api) {
         this.log("Adding " + name);
         this.accessoriesList.push(new kodiVideoLibrary.VideoLibraryCleanSwitchAccessory(this, api, videoLibraryCleanSwitchService, name, version));
     }
+    name = this.name + " Audio Library Scan";
+    audioLibraryScanSwitchService = new Service.Switch(name);
+    if (this.audioLibraryScanConfig) {
+        this.log("Adding " + name);
+        this.accessoriesList.push(new kodiAudioLibrary.AudioLibraryScanSwitchAccessory(this, api, audioLibraryScanSwitchService, name, version));
+    }
+    name = this.name + " Audio Library Clean";
+    audioLibraryCleanSwitchService = new Service.Switch(name);
+    if (this.audioLibraryCleanConfig) {
+        this.log("Adding " + name);
+        this.accessoriesList.push(new kodiAudioLibrary.AudioLibraryCleanSwitchAccessory(this, api, audioLibraryCleanSwitchService, name, version));
+    }
 
-    // Get Kodi Version
+    // Kodi Version
 
-    connection.kodiRequest(this.config, "Application.GetProperties", { "properties": ["version"] })
-        .then(result => {
-            this.log("Kodi Version: " + result.version.major + "." + result.version.minor);
-        })
-        .catch(error => this.log(error));
+    kodi.applicationGetProperties(this.config, this.log, ["version"], (error, result) => {
+        if (!error) {
+            if (result && result.version && result.version.major && result.version.minor) {
+                this.log("Kodi Version: " + result.version.major + "." + result.version.minor);
+            }
+        } else {
+            this.log("Kodi Version: Kodi does not seem to be running");
+        }
+    });
 
-    // Intervalled Updates Start
+    // Kodi Notifications
 
-    this.log("Starting Kodi Update with polling: " + this.polling + " seconds");
-    let intervalUpdateKodiPlayer = new setIntervalPlus(this.updateKodiPlayer.bind(this), this.polling * 1000);
+    this.log("Starting Subscription to Kodi Notifications");
+    this.kodiNotificationsSubscription();
+    intervalSubscriptionsKodiPlayer = new setIntervalPlus(this.kodiNotificationsSubscription.bind(this), 30 * 1000);
+
+    // Intervalled Updating Start
+
+    this.log("Starting Updating Kodi with polling: " + this.polling + " seconds");
+    this.updateKodiPlayer(false);
+    intervalUpdateKodiPlayer = new setIntervalPlus(this.updateKodiPlayer.bind(this), (this.polling != 0 ? this.polling : 10) * 1000);
 
     // Start Updates when currently playing
 
-    connection.kodiRequest(this.config, "Player.GetProperties", { "playerid": 1, "properties": ["speed"] })
-        .then(result => {
-            connection.kodiRequest(this.config, "Player.GetItem", { "playerid": 1 })
-                .then(itemresult => {
-                    if (itemresult.item.id && result.speed != 0 ? result.speed != 0 : false) {
+    kodi.playerGetActivePlayers(this.config, this.log, (error, playerid) => {
+        if (!error && playerid != -1) {
+            kodi.playerGetProperties(this.config, this.log, playerid, ["speed"], (error, result) => {
+                if (!error && result) {
+                    let playing = result.speed != 0 ? result.speed != 0 : false;
+                    let paused = result.speed == 0 ? result.speed == 0 : false;
+                    if (playing) {
                         playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(true);
                         playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(true);
                         playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
+                        this.updateKodiPlayer(false);
                         intervalUpdateKodiPlayer.start();
-                    } else if (itemresult.item.id && result.speed == 0 ? result.speed == 0 : false) {
+                    } else if (paused) {
                         playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
                         playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(false);
                         playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(true);
@@ -141,201 +178,296 @@ function KodiPlatform(log, config, api) {
                         playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
                         intervalUpdateKodiPlayer.stop();
                     }
-                })
-                .catch(error => {
-                    this.log(error);
-                });
-        })
-        .catch(error => this.log(error));
-
-    // Kodi Notifications
-
-    let ws = new WebSocket('ws://' + this.config.host + ':9090/jsonrpc');
-    ws.on('open', function () {
-        // Player.OnPlay
-        ws.on('Player.OnPlay', function () {
-            this.log("Notification Received: Player.OnPlay");
-            playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(true);
-            playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(true);
-            playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
-            intervalUpdateKodiPlayer.start();
-        }.bind(this));
-        ws.subscribe('Player.OnPlay').catch(function (error) {
-            console.log(error);
-        });
-        // Player.OnResume
-        ws.on('Player.OnResume', function () {
-            this.log("Notification Received: Player.OnResume");
-            playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(true);
-            playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(true);
-            playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
-            intervalUpdateKodiPlayer.start();
-        }.bind(this));
-        ws.subscribe('Player.OnResume').catch(function (error) {
-            console.log(error);
-        });
-        // Player.OnPause
-        ws.on('Player.OnPause', function () {
-            this.log("Notification Received: Player.OnPause");
+                }
+            });
+        } else {
             playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
             playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(false);
-            playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(true);
-            intervalUpdateKodiPlayer.stop();
-        }.bind(this));
-        ws.subscribe('Player.OnPause').catch(function (error) {
-            console.log(error);
-        });
-        // Player.OnStop
-        ws.on('Player.OnStop', function () {
-            this.log("Notification Received: Player.OnStop");
-            intervalUpdateKodiPlayer.stop();
-            playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
-            playerLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(0);
-            playerLightbulbService.getCharacteristic(Characteristic.Type).updateValue("-");
-            playerLightbulbService.getCharacteristic(Characteristic.Label).updateValue("-");
-            playerLightbulbService.getCharacteristic(Characteristic.ShowTitle).updateValue("-");
-            playerLightbulbService.getCharacteristic(Characteristic.SeasonEpisode).updateValue("-");
-            playerLightbulbService.getCharacteristic(Characteristic.Position).updateValue("0:00:00 / 0:00:00");
-            playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(false);
             playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
-            playerStopSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
-        }.bind(this));
-        ws.subscribe('Player.OnStop').catch(function (error) {
-            console.log(error);
-        });
-        // Player.OnSeek
-        ws.on('Player.OnSeek', function () {
-            this.log("Notification Received: Player.OnSeek");
-            connection.kodiRequest(this.config, "Player.GetProperties", { "playerid": 1, "properties": ["percentage"] })
-                .then(result => {
-                    playerLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(Math.round(result.percentage));
-                })
-                .catch(error => this.log(error));
-        }.bind(this));
-        ws.subscribe('Player.OnSeek').catch(function (error) {
-            console.log(error);
-        });
-        // Player.OnSpeedChanged
-        ws.on('Player.OnSpeedChanged', function () {
-            this.log("Notification Received: Application.OnSpeedChanged");
-            connection.kodiRequest(this.config, "Player.GetProperties", { "playerid": 1, "properties": ["speed"] })
-                .then(result => {
-                    let playing = result.speed != 0 ? result.speed != 0 : false;
-                    if (playing) {
-                        intervalUpdateKodiPlayer.start();
-                        playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(true);
-                        playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(true);
-                    } else {
-                        intervalUpdateKodiPlayer.stop();
-                        playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
-                        playerLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(0);
-                        playerLightbulbService.getCharacteristic(Characteristic.Type).updateValue("-");
-                        playerLightbulbService.getCharacteristic(Characteristic.Label).updateValue("-");
-                        playerLightbulbService.getCharacteristic(Characteristic.ShowTitle).updateValue("-");
-                        playerLightbulbService.getCharacteristic(Characteristic.SeasonEpisode).updateValue("-");
-                        playerLightbulbService.getCharacteristic(Characteristic.Position).updateValue("0:00:00 / 0:00:00");
-                        playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(false);
-                    }
-                })
-                .catch(error => this.log(error));
-        }.bind(this));
-        ws.subscribe('Player.OnSpeedChanged').catch(function (error) {
-            console.log(error);
-        });
-        // Player.OnVolumeChanged
-        ws.on('Application.OnVolumeChanged', function () {
-            this.log("Notification Received: Application.OnVolumeChanged");
-            connection.kodiRequest(this.config, "Application.GetProperties", { "properties": ["muted", "volume"] })
-                .then(result => {
-                    let muted = result.muted ? result.muted : false;
-                    let volume = result.volume ? result.volume : 0;
-                    this.log('muted: ' + muted + ' - volume: ' + volume);
-                    applicationVolumeLightbulbService.getCharacteristic(Characteristic.On).updateValue(!muted && volume != 0);
-                    applicationVolumeLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(volume);
-                })
-                .catch(error => this.log(error));
-        }.bind(this));
-        ws.subscribe('Application.OnVolumeChanged').catch(function (error) {
-            console.log(error);
-        });
-        // VideoLibrary.OnScanStarted
-        ws.on('VideoLibrary.OnScanStarted', function () {
-            this.log("Notification Received: VideoLibrary.OnScanStarted");
-        }.bind(this));
-        ws.subscribe('VideoLibrary.OnScanStarted').catch(function (error) {
-            console.log(error);
-        });
-        // VideoLibrary.OnScanFinished
-        ws.on('VideoLibrary.OnScanFinished', function () {
-            this.log("Notification Received: VideoLibrary.OnScanFinished");
-            videoLibraryScanSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
-        }.bind(this));
-        ws.subscribe('VideoLibrary.OnScanFinished').catch(function (error) {
-            console.log(error);
-        });
-        // VideoLibrary.OnCleanStarted
-        ws.on('VideoLibrary.OnCleanStarted', function () {
-            this.log("Notification Received: VideoLibrary.OnCleanStarted");
-        }.bind(this));
-        ws.subscribe('VideoLibrary.OnCleanStarted').catch(function (error) {
-            console.log(error);
-        });
-        // VideoLibrary.OnCleanFinished
-        ws.on('VideoLibrary.OnCleanFinished', function () {
-            this.log("Notification Received: VideoLibrary.OnCleanFinished");
-            videoLibraryCleanSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
-        }.bind(this));
-        ws.subscribe('VideoLibrary.OnCleanFinished').catch(function (error) {
-            console.log(error);
-        });
-    }.bind(this));
+            intervalUpdateKodiPlayer.stop();
+        }
+    });
 }
 
 KodiPlatform.prototype = {
     accessories: function (callback) {
-        this.log("Kodi Accessories read.");
+        this.log("Kodi Accessories read");
         callback(this.accessoriesList);
     },
 
-    updateKodiPlayer: async function () {
-        connection.kodiRequest(this.config, "Player.GetProperties", { "playerid": 1, "properties": ["speed", "percentage"] })
-            .then(result => {
-                let speed = result.speed != 0 ? result.speed != 0 : 0;
-                let percentage = Math.round(result.percentage ? result.percentage : 0);
-                playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(speed);
-                playerLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(percentage);
-                playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(speed);
-                playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(!speed);
+    kodiNotificationsSubscription: async function () {
+        kodi.getStatus(this.config, this.log, (error, status) => {
+            if (!error && status) {
+                let ws = new WebSocket('ws://' + this.config.host + ':9090/jsonrpc');
+                ws.on('open', () => {
+                    // Player.OnPlay
+                    const subscriptions = [
+                        'System.OnSleep',
+                        'System.OnQuit',
+                        'System.OnRestart',
+                        'Application.OnVolumeChanged',
+                        'Player.OnPlay',
+                        'Player.OnResume',
+                        'Player.OnPause',
+                        'Player.OnStop',
+                        'Player.OnSeek',
+                        'Player.OnSpeedChanged',
+                        'VideoLibrary.OnScanStarted',
+                        'VideoLibrary.OnScanFinished',
+                        'VideoLibrary.OnCleanStarted',
+                        'VideoLibrary.OnCleanFinished',
+                        'AudioLibrary.OnScanStarted',
+                        'AudioLibrary.OnScanFinished',
+                        'AudioLibrary.OnCleanStarted',
+                        'AudioLibrary.OnCleanFinished'
+                    ];
+                    ws.subscribe(subscriptions).catch(error => {
+                        //this.log.error("Subscription Error: " + error); // Always throws 'Method not found' warning after successfully subscribing?!
+                        intervalSubscriptionsKodiPlayer.stop();
+                        this.log("Kodi Notifications: Subscribed successfully");
+                    });
+                    // System.OnSleep
+                    ws.on('System.OnSleep', () => {
+                        this.log("Notification Received: System.OnSleep");
+                        ws.unsubscribe(subscriptions).catch(error => {
+                            //this.log.error("Subscription Error: " + error); // Always throws 'Method not found' warning after successfully unsubscribing?!
+                            intervalSubscriptionsKodiPlayer.start();
+                            this.log("Kodi Notifications: Unsubscribed successfully");
+                        });
+                        this.resetAllServices(true);
+                    });
+                    // System.OnQuit
+                    ws.on('System.OnQuit', () => {
+                        this.log("Notification Received: System.OnQuit");
+                        ws.unsubscribe(subscriptions).catch(error => {
+                            //this.log.error("Subscription Error: " + error); // Always throws 'Method not found' warning after successfully unsubscribing?!
+                            intervalSubscriptionsKodiPlayer.start();
+                            this.log("Kodi Notifications: Unsubscribed successfully");
+                        });
+                        this.resetAllServices(true);
+                    });
+                    // System.OnRestart
+                    ws.on('System.OnRestart', () => {
+                        this.log("Notification Received: System.OnRestart");
+                        ws.unsubscribe(subscriptions).catch(error => {
+                            //this.log.error("Subscription Error: " + error); // Always throws 'Method not found' warning after successfully unsubscribing?!
+                            intervalSubscriptionsKodiPlayer.start();
+                            this.log("Kodi Notifications: Unsubscribed successfully");
+                        });
+                        this.resetAllServices(true);
+                    });
+                    // Player.OnVolumeChanged
+                    ws.on('Application.OnVolumeChanged', () => {
+                        this.log("Notification Received: Application.OnVolumeChanged");
+                        kodi.applicationGetProperties(this.config, this.log, ["muted", "volume"], (error, result) => {
+                            if (!error && result) {
+                                let muted = result.muted ? result.muted : false;
+                                let volume = result.volume ? result.volume : 0;
+                                applicationVolumeLightbulbService.getCharacteristic(Characteristic.On).updateValue(!muted && volume != 0);
+                                applicationVolumeLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(volume);
+                            }
+                        });
+                    });
+                    // Player.OnPlay
+                    ws.on('Player.OnPlay', () => {
+                        this.log("Notification Received: Player.OnPlay");
+                        playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(true);
+                        playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(true);
+                        playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
+                        this.updateKodiPlayer(true);
+                        intervalUpdateKodiPlayer.start();
+                    });
+                    // Player.OnResume
+                    ws.on('Player.OnResume', () => {
+                        this.log("Notification Received: Player.OnResume");
+                        playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(true);
+                        playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(true);
+                        playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
+                        this.updateKodiPlayer(false);
+                        intervalUpdateKodiPlayer.start();
+                    });
+                    // Player.OnPause
+                    ws.on('Player.OnPause', () => {
+                        this.log("Notification Received: Player.OnPause");
+                        playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
+                        playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(false);
+                        playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(true);
+                        intervalUpdateKodiPlayer.stop();
+                    });
+                    // Player.OnStop
+                    ws.on('Player.OnStop', () => {
+                        this.log("Notification Received: Player.OnStop");
+                        intervalUpdateKodiPlayer.stop();
+                        this.resetAllServices(false);
+                    });
+                    // Player.OnSeek
+                    ws.on('Player.OnSeek', () => {
+                        this.log("Notification Received: Player.OnSeek");
+                        kodi.playerGetActivePlayers(this.config, this.log, (error, playerid) => {
+                            if (!error && playerid != -1) {
+                                kodi.playerGetProperties(this.config, this.log, playerid, ["percentage"], (error, result) => {
+                                    if (!error && result) {
+                                        playerLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(Math.round(result.percentage));
+                                    }
+                                });
+                            }
+                        });
+                    });
+                    // Player.OnSpeedChanged
+                    ws.on('Player.OnSpeedChanged', () => {
+                        this.log("Notification Received: Application.OnSpeedChanged");
+                        kodi.playerGetActivePlayers(this.config, this.log, (error, playerid) => {
+                            if (!error && playerid != -1) {
+                                kodi.playerGetProperties(this.config, this.log, playerid, ["speed"], (error, result) => {
+                                    if (!error && result) {
+                                        let playing = result.speed != 0 ? result.speed != 0 : false;
+                                        if (playing) {
+                                            intervalUpdateKodiPlayer.start();
+                                            playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(true);
+                                            playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(true);
+                                        } else {
+                                            intervalUpdateKodiPlayer.stop();
+                                            this.resetAllServices(false);
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                    });
+                    // VideoLibrary.OnScanStarted
+                    ws.on('VideoLibrary.OnScanStarted', () => {
+                        this.log("Notification Received: VideoLibrary.OnScanStarted");
+                        videoLibraryScanSwitchService.getCharacteristic(Characteristic.On).updateValue(true);
+                    });
+                    // VideoLibrary.OnScanFinished
+                    ws.on('VideoLibrary.OnScanFinished', () => {
+                        this.log("Notification Received: VideoLibrary.OnScanFinished");
+                        videoLibraryScanSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
+                    });
+                    // VideoLibrary.OnCleanStarted
+                    ws.on('VideoLibrary.OnCleanStarted', () => {
+                        this.log("Notification Received: VideoLibrary.OnCleanStarted");
+                        videoLibraryCleanSwitchService.getCharacteristic(Characteristic.On).updateValue(true);
+                    });
+                    // VideoLibrary.OnCleanFinished
+                    ws.on('VideoLibrary.OnCleanFinished', () => {
+                        this.log("Notification Received: VideoLibrary.OnCleanFinished");
+                        videoLibraryCleanSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
+                    });
+                    // AudioLibrary.OnScanStarted
+                    ws.on('AudioLibrary.OnScanStarted', () => {
+                        this.log("Notification Received: AudioLibrary.OnScanStarted");
+                        audioLibraryScanSwitchService.getCharacteristic(Characteristic.On).updateValue(true);
+                    });
+                    // AudioLibrary.OnScanFinished
+                    ws.on('AudioLibrary.OnScanFinished', () => {
+                        this.log("Notification Received: AudioLibrary.OnScanFinished");
+                        audioLibraryScanSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
+                    });
+                    // AudioLibrary.OnCleanStarted
+                    ws.on('AudioLibrary.OnCleanStarted', () => {
+                        this.log("Notification Received: AudioLibrary.OnCleanStarted");
+                        audioLibraryCleanSwitchService.getCharacteristic(Characteristic.On).updateValue(true);
+                    });
+                    // AudioLibrary.OnCleanFinished
+                    ws.on('AudioLibrary.OnCleanFinished', () => {
+                        this.log("Notification Received: AudioLibrary.OnCleanFinished");
+                        audioLibraryCleanSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
+                    });
+                });
+            } else {
+                this.log("Kodi Notifications: Kodi does not seem to be running - Retry in 30 seconds");
+            }
+        });
+    },
 
-                connection.kodiRequest(this.config, "Player.GetItem", { "playerid": 1, "properties": ["showtitle", "season", "episode", "duration"] })
-                    .then(result => {
-                        let type = result.item.type != 'unknown' ? result.item.type : "-";
-                        let label = result.item.label != '' ? result.item.label : "-";
-                        let showtitle = typeof result.item.showtitle !== 'undefined' && result.item.showtitle != '' ? result.item.showtitle : "-";
+    updateKodiPlayer: async function (onplay) {
+        kodi.playerGetActivePlayers(this.config, this.log, (error, playerid) => {
+            if (!error && playerid != -1) {
+                kodi.playerGetItem(this.config, this.log, playerid, ["artist", "album", "showtitle", "season", "episode", "duration"], (error, itemresult) => {
+                    if (!error && itemresult && itemresult.item) {
+                        let artist = itemresult.item.artist != '' ? itemresult.item.artist : "-";
+                        let album = itemresult.item.album != '' ? itemresult.item.album : "-";
+                        let itemtype = itemresult.item.type != 'unknown' ? itemresult.item.type : "-";
+                        let label = itemresult.item.label != '' ? itemresult.item.label : "-";
+                        let showtitle = typeof itemresult.item.showtitle !== 'undefined' && itemresult.item.showtitle != '' ? itemresult.item.showtitle : "-";
                         let seasonEpisode = "-";
-                        if (result.item.type == 'episode') {
-                            if ((result.item.season != -1 && result.item.episode != -1) || (typeof result.item.season !== 'undefined' && typeof result.item.episode !== 'undefined')) {
-                                seasonEpisode = "S" + result.item.season.toString().padStart(2, '0') + "E" + result.item.episode.toString().padStart(2, '0');
-                            } else if ((result.item.season == -1 && result.item.episode != -1) || (typeof result.item.season == 'undefined' && typeof result.item.episode !== 'undefined')) {
-                                seasonEpisode = "E" + result.item.episode.toString().padStart(2, '0');
+                        if (itemtype == 'episode') {
+                            if ((itemresult.item.season != -1 && itemresult.item.episode != -1) || (typeof resitemresultult.item.season !== 'undefined' && typeof itemresult.item.episode !== 'undefined')) {
+                                seasonEpisode = "S" + itemresult.item.season.toString().padStart(2, '0') + "E" + itemresult.item.episode.toString().padStart(2, '0');
+                            } else if ((itemresult.item.season == -1 && itemresult.item.episode != -1) || (typeof itemresult.item.season == 'undefined' && typeof itemresult.item.episode !== 'undefined')) {
+                                seasonEpisode = "E" + itemresult.item.episode.toString().padStart(2, '0');
                             }
                         }
-                        playerLightbulbService.getCharacteristic(Characteristic.Type).updateValue(type);
-                        playerLightbulbService.getCharacteristic(Characteristic.Label).updateValue(label);
-                        playerLightbulbService.getCharacteristic(Characteristic.ShowTitle).updateValue(showtitle);
-                        playerLightbulbService.getCharacteristic(Characteristic.SeasonEpisode).updateValue(seasonEpisode);
-
-                        connection.kodiRequest(this.config, "Player.GetProperties", { "playerid": 1, "properties": ["time", "totaltime"] })
-                            .then(result => {
+                        playerLightbulbService.setCharacteristic(CustomCharacteristic.Type, itemtype);
+                        playerLightbulbService.setCharacteristic(CustomCharacteristic.Label, label);
+                        playerLightbulbService.setCharacteristic(CustomCharacteristic.ShowTitle, showtitle);
+                        playerLightbulbService.setCharacteristic(CustomCharacteristic.SeasonEpisode, seasonEpisode);
+                        playerLightbulbService.setCharacteristic(CustomCharacteristic.Artist, artist);
+                        playerLightbulbService.setCharacteristic(CustomCharacteristic.Album, album);
+                        kodi.playerGetProperties(this.config, this.log, playerid, ["speed", "percentage", "time", "totaltime"], (error, result) => {
+                            if (!error && result) {
+                                let speed = result.speed != 0 ? result.speed != 0 : 0;
+                                let percentage = Math.round(result.percentage ? result.percentage : 0);
                                 let timeAndTotaltime = result.time.hours + ":" + result.time.minutes.toString().padStart(2, '0') + ":" + result.time.seconds.toString().padStart(2, '0') + " / " +
                                     result.totaltime.hours + ":" + result.totaltime.minutes.toString().padStart(2, '0') + ":" + result.totaltime.seconds.toString().padStart(2, '0');
-                                this.log("Setting Info (" + type + "): " + showtitle + " " + seasonEpisode + " \"" + label + "\" - " + timeAndTotaltime + " (" + percentage + " %)");
-                                playerLightbulbService.getCharacteristic(Characteristic.Position).updateValue(timeAndTotaltime);
-                            })
-                            .catch(error => this.log(error));
-                    })
-                    .catch(error => this.log(error));
-            })
-            .catch(error => this.log(error));
+                                if (timeAndTotaltime == "0:00:00 / 0:00:00") {
+                                    timeAndTotaltime = "-"
+                                }
+                                playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(speed);
+                                playerLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(Math.round(percentage));
+                                playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(speed);
+                                playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(!speed);
+                                playerLightbulbService.setCharacteristic(CustomCharacteristic.Position, timeAndTotaltime);
+                                switch (itemtype) {
+                                    case "movie":
+                                        this.log("Setting Info (" + itemtype + "): \"" + label + "\" - " + timeAndTotaltime + " (" + percentage + " %)");
+                                        break;
+                                    case "episode":
+                                        this.log("Setting Info (" + itemtype + "): " + showtitle + " " + seasonEpisode + " \"" + label + "\" - " + timeAndTotaltime + " (" + percentage + " %)");
+                                        break;
+                                    case "song":
+                                        this.log("Setting Info (" + itemtype + "): " + artist + " \"" + label + "\" (" + album + ") - " + timeAndTotaltime + " (" + percentage + " %)");
+                                        break;
+                                    case "channel":
+                                    case "unknown":
+                                        this.log("Setting Info (" + itemtype + "): \"" + label + "\"");
+                                        break;
+                                    default:
+                                        this.log("Setting Info (" + itemtype + "): \"" + label + "\"");
+                                }
+                            }
+                        });
+                    } else if (!onplay) {
+                        intervalUpdateKodiPlayer.stop();
+                    }
+                });
+            } else if (!onplay) {
+                intervalUpdateKodiPlayer.stop();
+            }
+        });
+    },
+
+    resetAllServices: function (withVolume) {
+        if (withVolume) {
+            applicationVolumeLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
+            applicationVolumeLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(0);
+        }
+        playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
+        playerLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(0);
+        playerLightbulbService.setCharacteristic(CustomCharacteristic.Type, "-");
+        playerLightbulbService.setCharacteristic(CustomCharacteristic.Label, "-");
+        playerLightbulbService.setCharacteristic(CustomCharacteristic.ShowTitle, "-");
+        playerLightbulbService.setCharacteristic(CustomCharacteristic.SeasonEpisode, "-");
+        playerLightbulbService.setCharacteristic(CustomCharacteristic.Artist, "-");
+        playerLightbulbService.setCharacteristic(CustomCharacteristic.Album, "-");
+        playerLightbulbService.setCharacteristic(CustomCharacteristic.Position, "-");
+        playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(false);
+        playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
+        playerStopSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
+        videoLibraryScanSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
+        videoLibraryCleanSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
+        audioLibraryScanSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
+        audioLibraryCleanSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
     }
 }
