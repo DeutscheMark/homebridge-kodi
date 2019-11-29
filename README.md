@@ -94,7 +94,7 @@ Below is an example for all available parameters and accessories of this plugin.
 
 ## Known Problems
 
-The development of this plugin is in an very early stage. Only use it if you are aware of what you are doing. A wrong configuration can lead to crash of the whole homebridge.
+The development of this plugin is in an very early stage.
 
 - Multiple running Kodis are supported, but multiple platform configs are necessary: In this early stage of development you can use multipe running Kodis but you need to have multiple Kodi Platforms configured in your config file. That certainly changes in a future version of the plugin so that only one platform is needed.
 - Library Scan & Clean: The current scan/clean status is not displayed in HomeKit. Also it does not abort the scanning/cleaning when currently scanning/cleaning and setting the switch to off. The API is missing this feature unfortunately.
