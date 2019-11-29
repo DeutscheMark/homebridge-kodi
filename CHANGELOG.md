@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0
+
+* Playback of any video and audio is now supported (even web and live content e.g. YouTube).
+* Audio library (`audioLibraryScan` & `audioLibraryClean`) is now supported.
+* New `debug` config to enable/disable logging.
+* Non running Kodi's are now supported (accessories will all just be off).
+* Fixed the warnings on startup.
+* Much better error handling.
+* Many many bugfixes for all available accessories.
+
 ## 0.1.4
 
 * Fixed error messages when using minimal config.
