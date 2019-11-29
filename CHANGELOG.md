@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0
+## 0.2.2
 
 * Playback of any video and audio is now supported (even web and live content e.g. YouTube).
 * Audio library (`audioLibraryScan` & `audioLibraryClean`) is now supported.
