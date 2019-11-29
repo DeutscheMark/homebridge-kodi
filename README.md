@@ -96,7 +96,7 @@ Below is an example for all available parameters and accessories of this plugin.
 
 The development of this plugin is in an very early stage.
 
-- Multiple running Kodis are not supported: In this early stage of development you can't use multipe running Kodis. Please set only one platform for homebridge-kodi per homebridfge instance.
+- Multiple running Kodis are not supported in one homebridge instance: In this early stage of development you can't use multipe running Kodis in a single homebridge instance. So please only configure one platform for homebridge-kodi per homebridge instance.
 - Library Scan & Clean: The current scan/clean status is not displayed in HomeKit. Also it does not abort the scanning/cleaning when currently scanning/cleaning and setting the switch to off. The API is missing this feature unfortunately.
 - Only internal players are supported right now.
 
