@@ -129,6 +129,10 @@ function KodiPlatform(log, config, api) {
         this.accessoriesList.push(new kodiAudioLibrary.AudioLibraryCleanSwitchAccessory(this, api, audioLibraryCleanSwitchService, name, version));
     }
 
+    // Reset all services on start
+
+    this.resetAllServices();
+
     // Kodi Version
 
     kodi.applicationGetProperties(this.config, this.log, ["version"], (error, result) => {
@@ -185,6 +189,17 @@ function KodiPlatform(log, config, api) {
             playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(false);
             playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
             intervalUpdateKodiPlayer.stop();
+        }
+    });
+
+    // Check volume on start
+
+    kodi.applicationGetProperties(this.config, this.log, ["volume", "muted"], (error, result) => {
+        if (!error && result) {
+            let volume = result.volume ? result.volume : 0;
+            let muted = result.muted ? result.muted : false;
+            applicationVolumeLightbulbService.getCharacteristic(Characteristic.On).updateValue(!muted);
+            applicationVolumeLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(volume);
         }
     });
 }
