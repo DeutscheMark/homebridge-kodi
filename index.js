@@ -9,6 +9,7 @@ const platformName = 'homebridge-kodi',
 const version = require('./package.json').version,
     kodi = require('./lib/kodi'),
     kodiPlayer = require('./lib/kodiPlayer'),
+    kodiTelevision = require('./lib/kodiTelevision'),
     kodiApplication = require('./lib/kodiApplication'),
     kodiVideoLibrary = require('./lib/kodiVideoLibrary'),
     kodiAudioLibrary = require('./lib/kodiAudioLibrary');
@@ -17,13 +18,14 @@ let Service,
     Characteristic,
     CustomCharacteristic;
 
-let playerTelevisionService,
-    playerTelevisionSpeakerService,
-    playerTelevisionChannelsService,
-    playerLightbulbService,
+let playerLightbulbService,
     playerPlaySwitchService,
     playerPauseSwitchService,
     playerStopSwitchService,
+    televisionControlsService,
+    televisionControlsSpeakerService,
+    televisionChannelsService,
+    televisionChannelsSpeakerService,
     applicationVolumeLightbulbService,
     videoLibraryScanSwitchService,
     videoLibraryCleanSwitchService,
@@ -55,10 +57,10 @@ function KodiPlatform(log, config, api) {
     this.username = this.config.username || 'kodi';
     this.password = this.config.password || 'kodi';
     this.polling = this.config.polling || 10;
-    this.playerTVConfig = this.config.player.tvcontrols || true;
-    this.playerTVMenuItemsConfig = this.config.player.tvcontrols.menuitems || [];
-    this.playerTVChannelsConfig = this.config.player.tvchannels || true;
-    this.playerTVChannelsChannelsConfig = this.config.player.tvchannels.channels || [];
+    this.tvConfig = this.config.tvControls || false;
+    this.tvMenuItemsConfig = this.config.tvControls.menuitems || [];
+    this.tvChannelsConfig = this.config.tvChannels || false;
+    this.tvChannelsChannelsConfig = this.config.tvChannels.channels || [];
     this.playerPlayConfig = this.config.player.play || false;
     this.playerPauseConfig = this.config.player.pause || false;
     this.playerStopConfig = this.config.player.stop || false;
@@ -81,15 +83,38 @@ function KodiPlatform(log, config, api) {
 
     CustomCharacteristic = require('./util/characteristics')(api);
 
-    let name = this.name;
-    playerTelevisionService = new Service.Television(name, 'tvService');
-    playerTelevisionSpeakerService = new Service.TelevisionSpeaker(name + " Speaker", name + " Speaker");
-    let inputServices = [];
-    let inputNames = [];
-    let inputIdentifiers = [];
-    if (this.playerTVConfig) {
-        for (let index = 0; index < this.playerTVMenuItemsConfig.length; index++) {
-            let inputName = this.playerTVMenuItemsConfig[index];
+    let name = this.name + " Player";
+    this.log("Adding " + name);
+    playerLightbulbService = new Service.Lightbulb(name);
+    this.accessoriesList.push(new kodiPlayer.PlayerLightbulbAccessory(this, api, playerLightbulbService, name, version));
+    name = this.name + " Player Play";
+    playerPlaySwitchService = new Service.Switch(name);
+    if (this.playerPlayConfig) {
+        this.log("Adding " + name);
+        this.accessoriesList.push(new kodiPlayer.PlayerPlaySwitchAccessory(this, api, playerPlaySwitchService, name, version));
+    }
+    name = this.name + " Player Pause";
+    playerPauseSwitchService = new Service.Switch(name);
+    if (this.playerPauseConfig) {
+        this.log("Adding " + name);
+        this.accessoriesList.push(new kodiPlayer.PlayerPauseSwitchAccessory(this, api, playerPauseSwitchService, name, version));
+    }
+    name = this.name + " Player Stop";
+    playerStopSwitchService = new Service.Switch(name);
+    if (this.playerStopConfig) {
+        this.log("Adding " + name);
+        this.accessoriesList.push(new kodiPlayer.PlayerStopSwitchAccessory(this, api, playerStopSwitchService, name, version));
+    }
+    name = this.name + " Controls";
+    televisionControlsService = new Service.Television(name);
+    televisionControlsSpeakerService = new Service.TelevisionSpeaker(name + " Speaker");
+    if (this.tvConfig) {
+        this.log("Adding " + name);
+        let inputServices = [];
+        let inputNames = [];
+        let inputIdentifiers = [];
+        for (let index = 0; index < this.tvMenuItemsConfig.length; index++) {
+            let inputName = this.tvMenuItemsConfig[index];
             let inputIdentifier;
             switch (inputName) {
                 case "home":
@@ -154,54 +179,32 @@ function KodiPlatform(log, config, api) {
             }
             if (inputName && inputIdentifier) {
                 this.log("Adding input for " + name + ": " + inputName);
-                let inputService = new Service.InputSource(inputName, "inputSource" + inputIdentifier);
+                let inputService = new Service.InputSource(inputName, "menuitem" + inputIdentifier);
                 inputServices.push(inputService);
                 inputNames.push(inputName);
                 inputIdentifiers.push(inputIdentifier);
             }
         }
         this.log("Adding " + name);
-        this.accessoriesList.push(new kodiPlayer.PlayerTelevisionAccessory(this, api, playerTelevisionService, playerTelevisionSpeakerService, inputServices, inputNames, inputIdentifiers, name, version));
+        this.accessoriesList.push(new kodiTelevision.TelevisionAccessory(this, api, "Controls", televisionControlsService, televisionControlsSpeakerService, inputServices, inputNames, inputIdentifiers, name, version));
     }
-
-    name = this.name + " TV";
-    playerTelevisionChannelsService = new Service.Television(name);
-    if (this.playerTVChannelsConfig) {
+    name = this.name + " Channels";
+    televisionChannelsService = new Service.Television(name);
+    televisionChannelsSpeakerService = new Service.TelevisionSpeaker(name + " Speaker");
+    if (this.tvChannelsConfig) {
         this.log("Adding " + name);
-        let channelsInputServices = [];
-        let channelsInputNames = [];
-        for (let index = 0; index < this.playerTVChannelsChannelsConfig.length; index++) {
-            let inputName = this.playerTVChannelsChannelsConfig[index];
+        let inputServices = [];
+        let inputNames = [];
+        let inputIdentifiers = [];
+        for (let index = 0; index < this.tvChannelsChannelsConfig.length; index++) {
+            let inputName = this.tvChannelsChannelsConfig[index];
             this.log("Adding input for " + name + ": " + inputName);
-            let inputService = new Service.InputSource(inputName, "inputTVSource" + index + 1);
-            channelsInputServices.push(inputService);
-            channelsInputNames.push(inputName);
+            let inputService = new Service.InputSource(inputName, "channel" + index + 1);
+            inputServices.push(inputService);
+            inputNames.push(inputName);
+            inputIdentifiers.push(index + 1);
         }
-        this.accessoriesList.push(new kodiPlayer.PlayerTelevisionChannelsAccessory(this, api, playerTelevisionChannelsService, channelsInputServices, channelsInputNames, name, version));
-    }
-
-    name = this.name + " Player";
-    this.log("Adding " + name);
-    playerLightbulbService = new Service.Lightbulb(name);
-    this.accessoriesList.push(new kodiPlayer.PlayerLightbulbAccessory(this, api, playerLightbulbService, name, version));
-
-    name = this.name + " Player Play";
-    playerPlaySwitchService = new Service.Switch(name);
-    if (this.playerPlayConfig) {
-        this.log("Adding " + name);
-        this.accessoriesList.push(new kodiPlayer.PlayerPlaySwitchAccessory(this, api, playerPlaySwitchService, name, version));
-    }
-    name = this.name + " Player Pause";
-    playerPauseSwitchService = new Service.Switch(name);
-    if (this.playerPauseConfig) {
-        this.log("Adding " + name);
-        this.accessoriesList.push(new kodiPlayer.PlayerPauseSwitchAccessory(this, api, playerPauseSwitchService, name, version));
-    }
-    name = this.name + " Player Stop";
-    playerStopSwitchService = new Service.Switch(name);
-    if (this.playerStopConfig) {
-        this.log("Adding " + name);
-        this.accessoriesList.push(new kodiPlayer.PlayerStopSwitchAccessory(this, api, playerStopSwitchService, name, version));
+        this.accessoriesList.push(new kodiTelevision.TelevisionAccessory(this, api, "Channels", televisionChannelsService, televisionChannelsSpeakerService, inputServices, inputNames, inputIdentifiers, name, version));
     }
     name = this.name + " Volume";
     applicationVolumeLightbulbService = new Service.Lightbulb(name);
@@ -274,7 +277,7 @@ function KodiPlatform(log, config, api) {
             playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(true);
             playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
             kodi.tvIsPlaying(this.config, this.log, (tvplaying) => {
-                playerTelevisionChannelsService.getCharacteristic(Characteristic.Active).updateValue(tvplaying);
+                televisionChannelsService.getCharacteristic(Characteristic.Active).updateValue(tvplaying);
             });
             this.updateKodiPlayer(false);
             intervalUpdateKodiPlayer.start();
@@ -295,7 +298,6 @@ function KodiPlatform(log, config, api) {
 KodiPlatform.prototype = {
     accessories: function (callback) {
         this.log("Kodi Accessories read");
-        console.log(this.accessoriesList);
         callback(this.accessoriesList);
     },
 
@@ -327,7 +329,7 @@ KodiPlatform.prototype = {
                     ];
                     ws.subscribe(subscriptions).catch(error => {
                         //this.log.error("Subscription Error: " + error); // Always throws 'Method not found' warning after successfully subscribing?!
-                        playerTelevisionService.getCharacteristic(Characteristic.Active).updateValue(true);
+                        televisionControlsService.getCharacteristic(Characteristic.Active).updateValue(true);
                         this.updateApplicationVolumeService();
                         this.updatePlayerTelevisionChannelsService();
                         intervalSubscriptionsKodiPlayer.stop();
@@ -338,8 +340,8 @@ KodiPlatform.prototype = {
                         this.log("Notification Received: System.OnSleep");
                         ws.unsubscribe(subscriptions).catch(error => {
                             //this.log.error("Subscription Error: " + error); // Always throws 'Method not found' warning after successfully unsubscribing?!
-                            playerTelevisionService.getCharacteristic(Characteristic.Active).updateValue(false);
-                            playerTelevisionChannelsService.getCharacteristic(Characteristic.Active).updateValue(false);
+                            televisionControlsService.getCharacteristic(Characteristic.Active).updateValue(false);
+                            televisionChannelsService.getCharacteristic(Characteristic.Active).updateValue(false);
                             applicationVolumeLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
                             applicationVolumeLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(0);
                             intervalSubscriptionsKodiPlayer.start();
@@ -352,8 +354,8 @@ KodiPlatform.prototype = {
                         this.log("Notification Received: System.OnQuit");
                         ws.unsubscribe(subscriptions).catch(error => {
                             //this.log.error("Subscription Error: " + error); // Always throws 'Method not found' warning after successfully unsubscribing?!
-                            playerTelevisionService.getCharacteristic(Characteristic.Active).updateValue(false);
-                            playerTelevisionChannelsService.getCharacteristic(Characteristic.Active).updateValue(false);
+                            televisionControlsService.getCharacteristic(Characteristic.Active).updateValue(false);
+                            televisionChannelsService.getCharacteristic(Characteristic.Active).updateValue(false);
                             applicationVolumeLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
                             applicationVolumeLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(0);
                             intervalSubscriptionsKodiPlayer.start();
@@ -366,8 +368,8 @@ KodiPlatform.prototype = {
                         this.log("Notification Received: System.OnRestart");
                         ws.unsubscribe(subscriptions).catch(error => {
                             //this.log.error("Subscription Error: " + error); // Always throws 'Method not found' warning after successfully unsubscribing?!
-                            playerTelevisionService.getCharacteristic(Characteristic.Active).updateValue(false);
-                            playerTelevisionChannelsService.getCharacteristic(Characteristic.Active).updateValue(false);
+                            televisionControlsService.getCharacteristic(Characteristic.Active).updateValue(false);
+                            televisionChannelsService.getCharacteristic(Characteristic.Active).updateValue(false);
                             applicationVolumeLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
                             applicationVolumeLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(0);
                             intervalSubscriptionsKodiPlayer.start();
@@ -419,7 +421,7 @@ KodiPlatform.prototype = {
                     // Player.OnStop
                     ws.on('Player.OnStop', () => {
                         this.log("Notification Received: Player.OnStop");
-                        playerTelevisionChannelsService.getCharacteristic(Characteristic.Active).updateValue(false);
+                        televisionChannelsService.getCharacteristic(Characteristic.Active).updateValue(false);
                         intervalUpdateKodiPlayer.stop();
                         this.resetAllServices(false);
                     });
@@ -589,11 +591,11 @@ KodiPlatform.prototype = {
         playerLightbulbService.setCharacteristic(CustomCharacteristic.Artist, "-");
         playerLightbulbService.setCharacteristic(CustomCharacteristic.Album, "-");
         playerLightbulbService.setCharacteristic(CustomCharacteristic.Position, "-");
-        playerTelevisionSpeakerService.getCharacteristic(Characteristic.Active).updateValue(false);
-        playerTelevisionChannelsService.getCharacteristic(Characteristic.Active).updateValue(false);
         playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(false);
         playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
         playerStopSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
+        televisionControlsService.getCharacteristic(Characteristic.Active).updateValue(false);
+        televisionChannelsService.getCharacteristic(Characteristic.Active).updateValue(false);
         videoLibraryScanSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
         videoLibraryCleanSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
         audioLibraryScanSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
@@ -613,7 +615,7 @@ KodiPlatform.prototype = {
 
     updatePlayerTelevisionChannelsService: function () {
         kodi.tvIsPlaying(this.config, this.log, (tvplaying) => {
-            playerTelevisionChannelsService.getCharacteristic(Characteristic.Active).updateValue(tvplaying);
+            televisionChannelsService.getCharacteristic(Characteristic.Active).updateValue(tvplaying);
         });
     }
 }
