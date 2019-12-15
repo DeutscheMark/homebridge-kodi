@@ -8,8 +8,8 @@ const platformName = 'homebridge-kodi',
 
 const version = require('./package.json').version,
     kodi = require('./lib/kodi'),
-    kodiPlayer = require('./lib/kodiPlayer'),
     kodiTelevision = require('./lib/kodiTelevision'),
+    kodiPlayer = require('./lib/kodiPlayer'),
     kodiApplication = require('./lib/kodiApplication'),
     kodiVideoLibrary = require('./lib/kodiVideoLibrary'),
     kodiAudioLibrary = require('./lib/kodiAudioLibrary');
@@ -18,14 +18,14 @@ let Service,
     Characteristic,
     CustomCharacteristic;
 
-let playerLightbulbService,
-    playerPlaySwitchService,
-    playerPauseSwitchService,
-    playerStopSwitchService,
-    televisionControlsService,
+let televisionControlsService,
     televisionControlsSpeakerService,
     televisionChannelsService,
     televisionChannelsSpeakerService,
+    playerLightbulbService,
+    playerPlaySwitchService,
+    playerPauseSwitchService,
+    playerStopSwitchService,
     applicationVolumeLightbulbService,
     videoLibraryScanSwitchService,
     videoLibraryCleanSwitchService,
@@ -83,29 +83,7 @@ function KodiPlatform(log, config, api) {
 
     CustomCharacteristic = require('./util/characteristics')(api);
 
-    let name = this.name + " Player";
-    this.log("Adding " + name);
-    playerLightbulbService = new Service.Lightbulb(name);
-    this.accessoriesList.push(new kodiPlayer.PlayerLightbulbAccessory(this, api, playerLightbulbService, name, version));
-    name = this.name + " Player Play";
-    playerPlaySwitchService = new Service.Switch(name);
-    if (this.playerPlayConfig) {
-        this.log("Adding " + name);
-        this.accessoriesList.push(new kodiPlayer.PlayerPlaySwitchAccessory(this, api, playerPlaySwitchService, name, version));
-    }
-    name = this.name + " Player Pause";
-    playerPauseSwitchService = new Service.Switch(name);
-    if (this.playerPauseConfig) {
-        this.log("Adding " + name);
-        this.accessoriesList.push(new kodiPlayer.PlayerPauseSwitchAccessory(this, api, playerPauseSwitchService, name, version));
-    }
-    name = this.name + " Player Stop";
-    playerStopSwitchService = new Service.Switch(name);
-    if (this.playerStopConfig) {
-        this.log("Adding " + name);
-        this.accessoriesList.push(new kodiPlayer.PlayerStopSwitchAccessory(this, api, playerStopSwitchService, name, version));
-    }
-    name = this.name + " Controls";
+    let name = this.name + " Controls";
     televisionControlsService = new Service.Television(name);
     televisionControlsSpeakerService = new Service.TelevisionSpeaker(name + " Speaker");
     if (this.tvConfig) {
@@ -206,6 +184,28 @@ function KodiPlatform(log, config, api) {
         }
         this.accessoriesList.push(new kodiTelevision.TelevisionAccessory(this, api, "Channels", televisionChannelsService, televisionChannelsSpeakerService, inputServices, inputNames, inputIdentifiers, name, version));
     }
+    name = this.name + " Player";
+    this.log("Adding " + name);
+    playerLightbulbService = new Service.Lightbulb(name);
+    this.accessoriesList.push(new kodiPlayer.PlayerLightbulbAccessory(this, api, playerLightbulbService, name, version));
+    name = this.name + " Player Play";
+    playerPlaySwitchService = new Service.Switch(name);
+    if (this.playerPlayConfig) {
+        this.log("Adding " + name);
+        this.accessoriesList.push(new kodiPlayer.PlayerPlaySwitchAccessory(this, api, playerPlaySwitchService, name, version));
+    }
+    name = this.name + " Player Pause";
+    playerPauseSwitchService = new Service.Switch(name);
+    if (this.playerPauseConfig) {
+        this.log("Adding " + name);
+        this.accessoriesList.push(new kodiPlayer.PlayerPauseSwitchAccessory(this, api, playerPauseSwitchService, name, version));
+    }
+    name = this.name + " Player Stop";
+    playerStopSwitchService = new Service.Switch(name);
+    if (this.playerStopConfig) {
+        this.log("Adding " + name);
+        this.accessoriesList.push(new kodiPlayer.PlayerStopSwitchAccessory(this, api, playerStopSwitchService, name, version));
+    }
     name = this.name + " Volume";
     applicationVolumeLightbulbService = new Service.Lightbulb(name);
     if (this.applicationVolumeConfig) {
@@ -273,12 +273,12 @@ function KodiPlatform(log, config, api) {
 
     kodi.isPlaying(this.config, this.log, (playing, paused) => {
         if (playing) {
-            playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(true);
-            playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(true);
-            playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
             kodi.tvIsPlaying(this.config, this.log, (tvplaying) => {
                 televisionChannelsService.getCharacteristic(Characteristic.Active).updateValue(tvplaying);
             });
+            playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(true);
+            playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(true);
+            playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
             this.updateKodiPlayer(false);
             intervalUpdateKodiPlayer.start();
         } else if (paused) {
@@ -331,7 +331,7 @@ KodiPlatform.prototype = {
                         //this.log.error("Subscription Error: " + error); // Always throws 'Method not found' warning after successfully subscribing?!
                         televisionControlsService.getCharacteristic(Characteristic.Active).updateValue(true);
                         this.updateApplicationVolumeService();
-                        this.updatePlayerTelevisionChannelsService();
+                        this.updateTelevisionChannelsService();
                         intervalSubscriptionsKodiPlayer.stop();
                         this.log("Kodi Notifications: Subscribed successfully");
                     });
@@ -395,7 +395,7 @@ KodiPlatform.prototype = {
                         playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(true);
                         playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(true);
                         playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
-                        this.updatePlayerTelevisionChannelsService();
+                        this.updateTelevisionChannelsService();
                         this.updateKodiPlayer(true);
                         intervalUpdateKodiPlayer.start();
                     });
@@ -405,7 +405,7 @@ KodiPlatform.prototype = {
                         playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(true);
                         playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(true);
                         playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
-                        this.updatePlayerTelevisionChannelsService();
+                        this.updateTelevisionChannelsService();
                         this.updateKodiPlayer(false);
                         intervalUpdateKodiPlayer.start();
                     });
@@ -415,7 +415,7 @@ KodiPlatform.prototype = {
                         playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
                         playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(false);
                         playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(true);
-                        this.updatePlayerTelevisionChannelsService();
+                        this.updateTelevisionChannelsService();
                         intervalUpdateKodiPlayer.stop();
                     });
                     // Player.OnStop
@@ -578,10 +578,8 @@ KodiPlatform.prototype = {
     },
 
     resetAllServices: function (withVolume) {
-        if (withVolume) {
-            applicationVolumeLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
-            applicationVolumeLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(0);
-        }
+        televisionControlsService.getCharacteristic(Characteristic.Active).updateValue(false);
+        televisionChannelsService.getCharacteristic(Characteristic.Active).updateValue(false);
         playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
         playerLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(0);
         playerLightbulbService.setCharacteristic(CustomCharacteristic.Type, "-");
@@ -594,12 +592,14 @@ KodiPlatform.prototype = {
         playerPlaySwitchService.getCharacteristic(Characteristic.On).updateValue(false);
         playerPauseSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
         playerStopSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
-        televisionControlsService.getCharacteristic(Characteristic.Active).updateValue(false);
-        televisionChannelsService.getCharacteristic(Characteristic.Active).updateValue(false);
         videoLibraryScanSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
         videoLibraryCleanSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
         audioLibraryScanSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
         audioLibraryCleanSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
+        if (withVolume) {
+            applicationVolumeLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
+            applicationVolumeLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(0);
+        }
     },
 
     updateApplicationVolumeService: function () {
@@ -613,7 +613,7 @@ KodiPlatform.prototype = {
         });
     },
 
-    updatePlayerTelevisionChannelsService: function () {
+    updateTelevisionChannelsService: function () {
         kodi.tvIsPlaying(this.config, this.log, (tvplaying) => {
             televisionChannelsService.getCharacteristic(Characteristic.Active).updateValue(tvplaying);
         });
