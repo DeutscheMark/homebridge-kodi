@@ -57,10 +57,10 @@ function KodiPlatform(log, config, api) {
     this.username = this.config.username || 'kodi';
     this.password = this.config.password || 'kodi';
     this.polling = this.config.polling || 10;
-    this.tvConfig = this.config.tvControls || false;
-    this.tvMenuItemsConfig = this.config.tvControls.menuitems || [];
-    this.tvChannelsConfig = this.config.tvChannels || false;
-    this.tvChannelsChannelsConfig = this.config.tvChannels.channels || [];
+    this.tvConfig = this.config.television.controls || false;
+    this.tvMenuItemsConfig = this.config.television.controls.menuitems || [];
+    this.tvChannelsConfig = this.config.television.tv.channels || false;
+    this.tvChannelsChannelsConfig = this.config.television.tv.channels || [];
     this.playerPlayConfig = this.config.player.play || false;
     this.playerPauseConfig = this.config.player.pause || false;
     this.playerStopConfig = this.config.player.stop || false;
