@@ -65,10 +65,10 @@ function KodiPlatform(log, config, api) {
     this.playerPauseConfig = this.config.player.pause || false;
     this.playerStopConfig = this.config.player.stop || false;
     this.applicationVolumeConfig = this.config.application.volume || false;
-    this.videoLibraryScanConfig = this.config.videoLibrary.scan || false;
-    this.videoLibraryCleanConfig = this.config.videoLibrary.clean || false;
-    this.audioLibraryScanConfig = this.config.audioLibrary.scan || false;
-    this.audioLibraryCleanConfig = this.config.audioLibrary.clean || false;
+    this.videoLibraryScanConfig = this.config.videolibrary.scan || false;
+    this.videoLibraryCleanConfig = this.config.videolibrary.clean || false;
+    this.audioLibraryScanConfig = this.config.audiolibrary.scan || false;
+    this.audioLibraryCleanConfig = this.config.audiolibrary.clean || false;
 
     // Add Information Service
 
