@@ -560,7 +560,19 @@ KodiPlatform.prototype = {
                                         this.log("Setting Info (" + itemtype + "): \"" + label + "\" - " + timeAndTotaltime + " (" + percentage + " %)");
                                         break;
                                     case "channel":
-                                        this.log("Setting Info (" + itemtype + "): \"" + label + "\"");
+                                        televisionChannelsService.getCharacteristic(Characteristic.Active).updateValue(true);
+                                        let activeIdentifier;
+                                        for (let index = 0; index < this.tvChannelsChannelsConfig.length; index++) {
+                                            if (label == this.tvChannelsChannelsConfig[index]) {
+                                                activeIdentifier = index + 1;
+                                            }
+                                        }
+                                        if (activeIdentifier) {
+                                            televisionChannelsService.getCharacteristic(Characteristic.ActiveIdentifier).updateValue(activeIdentifier);
+                                        } else {
+                                            televisionChannelsService.getCharacteristic(Characteristic.ActiveIdentifier).updateValue(1);
+                                        }
+                                        this.log("Setting Info (" + itemtype + "): \"" + label + "\" (" + activeIdentifier + ")");
                                         break;
                                     default:
                                         this.log("Setting Info (" + itemtype + "): \"" + label + "\"");
