@@ -1,3 +1,7 @@
+<p align="center">
+    <img src= "https://user-images.githubusercontent.com/7172176/70864582-aa695d80-1f53-11ea-8b7b-0ebcb567ed7a.png" alt="Homebridge-Kodi-Logo" height="200px" />
+</p>
+
 # Homebridge Kodi
 
 ## homebridge-kodi
@@ -10,9 +14,7 @@
 ![Kodi](https://img.shields.io/badge/Minimum%20Kodi%20Version-12.0%20(Frodo)-orange?style=flat-square)
 ![Kodi](https://img.shields.io/badge/Latest%20Kodi%20Version-19.0%20(Matrix)-yellow?style=flat-square)
 
-### Control any [Kodi](https://kodi.tv) with HomeKit and [Homebridge](https://github.com/nfarina/homebridge)
-
-<img src= "https://user-images.githubusercontent.com/19808920/58770949-bd9c7900-857f-11e9-8558-5dfaffddffda.png" alt="Homebridge-Logo" width="150"><img src="https://upload.wikimedia.org/wikipedia/commons/2/25/Kodi-logo-Thumbnail-light-transparent.png" alt="Kodi-Logo" width="125">
+### Control [Kodi](https://kodi.tv) with HomeKit and [Homebridge](https://github.com/nfarina/homebridge)
 
 This is a plugin for [Homebridge](https://github.com/nfarina/homebridge) that features controls and information about any running [Kodi](https://kodi.tv) in your network.
 You can download it via [npm](https://www.npmjs.com/package/homebridge-kodi).
@@ -21,10 +23,13 @@ Feel free to leave any feedback or suggested features [here](https://github.com/
 
 ## Features
 
-- Get controls for Kodi Player including Play, Pause, Seek, Stop, Volume and Audio/Video Library Scan and Clean
-- You can add more than one platform to support more running Kodi instances (just give them different names, currently buggy when playback at the same time)
-- See Information about the current playing show, season, episode and title in the Eve App
-- See Information about the current playing item's time, totalTime and percentage played in the Eve App
+- Get TV accessories for controlling the menus in Kodi and watching TV channels.
+- Get a remote control for the Kodi GUI with every configured TV accessory.
+- Get controls for Kodi Player including Play, Pause, Seek, Stop and Audio/Video Library Scan and Clean
+- Set the volume of Kodi
+- See Information about the current playing show, season, episode, title, artist, album and type in the Eve App
+- See Information about the current playing item's current time, total time and the percentage played in the Eve App
+- Supported playing items in Kodi are movies, TV shows, TV, radio, music and music videos
 
 ## Kodi Preparations
 
@@ -50,22 +55,63 @@ Below is an example for all available parameters and accessories of this plugin.
 ```json
 "platforms": [
     {
-        "platform": "Kodi",
-        "name": "Kodi",
-        "host": "192.168.2.100",
-        "port": "8080",
-        "username": "kodi",
-        "password": "kodi",
-        "polling": 10,
-        "playerPlay": true,
-        "playerStop": true,
-        "applicationVolume": true,
-        "videoLibraryScan": true,
-        "videoLibraryClean": true,
-        "audioLibraryScan": true,
-        "audioLibraryClean": true,
-        "debug": false
-    }
+            "platform": "Kodi",
+            "name": "Kodi",
+            "host": "192.168.2.100",
+            "port": "8080",
+            "username": "kodi",
+            "password": "kodi",
+            "polling": 10,
+            "television": {
+                "controls": {
+                    "menuitems": [
+                        "home",
+                        "settings",
+                        "movies",
+                        "tvshows",
+                        "tv",
+                        "music",
+                        "musicvideos",
+                        "radio",
+                        "games",
+                        "addons",
+                        "pictures",
+                        "videos",
+                        "favorites",
+                        "weather"
+                    ]
+                },
+                "tv": {
+                    "channels": [
+                        "Das Erste HD",
+                        "ZDF HD",
+                        "RTL",
+                        "SAT.1",
+                        "VOX",
+                        "kabel eins",
+                        "ProSieben",
+                        "RTL II"
+                    ]
+                }
+            },
+            "player": {
+                "play": true,
+                "pause": true,
+                "stop": true
+            },
+            "application": {
+                "volume": true
+            },
+            "videolibrary": {
+                "scan": true,
+                "clean": true
+            },
+            "audiolibrary": {
+                "scan": true,
+                "clean": true
+            },
+            "debug": true
+        }
 ]
 ```
 
@@ -76,28 +122,30 @@ Below is an example for all available parameters and accessories of this plugin.
 - `port` is the port set for the Kodi remote control, optional, default "8080"
 - `username` is the username set for the Kodi remote control, optional, default "kodi"
 - `password` is the password set for the Kodi remote control, optional, default "kodi"
-- `polling` is the polling rate in seconds for updating all accessories, optional, default 10
-- `playerPlay` is an alternative switch for controlling the playback in Kodi, optional, default false
-- `playerPause` is a switch for pausing the current playback in Kodi, optional, default false
-- `playerStop` is a switch for stopping the current playback in Kodi, optional, default false
-- `applicationVolume` is a light bulb for controlling the volume in Kodi and controlling the current volume via a brightness slider, optional, default false
-- `videoLibraryScan` is a switch for starting a scanning of the video library in Kodi, optional, default false
-- `videoLibraryClean` is a switch for starting a cleaning of the video library in Kodi, optional, default false
-- `audioLibraryScan` is a switch for starting a scanning of the audio library in Kodi, optional, default false
-- `audioLibraryClean` is a switch for starting a cleaning of the audio library in Kodi, optional, default false
+- `polling` is the polling rate in seconds for updating all accessories when playing, optional, default 10
+- `television` > `controls` is a TV accessory for changing the current menu in Kodi, it also enables remote control in iOS/iPadOS for controlling the GUI, optional, default false
+- `television` > `controls` > `menuitems` is an array of menu items that can be opened in Kodi.
+- `television` > `tv` is a TV accessory for watching TV in Kodi, it also enables remote control in iOS/iPadOS for controlling the GUI, optional, default false
+- `television` > `tv` > `channels` is an array of TV channels that can be switched to in Kodi. Channel names must be exactly the same as in Kodi for them to work.
+- `player` > `play` is an alternative switch for controlling the playback in Kodi, optional, default false
+- `player` > `pause` is a switch for pausing the current playback in Kodi, optional, default false
+- `player` > `stop` is a switch for stopping the current playback in Kodi, optional, default false
+- `application` > `volume` is a light bulb for controlling the volume in Kodi and controlling the current volume via a brightness slider, optional, default false
+- `videolibrary` > `scan` is a switch for starting a scanning of the video library in Kodi, optional, default false
+- `videolibrary` > `clean` is a switch for starting a cleaning of the video library in Kodi, optional, default false
+- `audiolibrary` > `scan` is a switch for starting a scanning of the audio library in Kodi, optional, default false
+- `audiolibrary` > `clean` is a switch for starting a cleaning of the audio library in Kodi, optional, default false
 - `debug` enables logging for all events and status updates, default false
 
 ## Coming Next
 
-- TV accessory for switching between modes and controlling Kodi.
-- Variable command lists as accessories.
+- Command lists
+- TV channel switches
 
 ## Known Problems
 
-The development of this plugin is in an very early stage.
-
-- Multiple running Kodis are not supported in one homebridge instance: In this early stage of development you can't use multipe running Kodis in a single homebridge instance. So please only configure one platform for homebridge-kodi per homebridge instance.
-- Library Scan & Clean: The current scan/clean status is not displayed in HomeKit. Also it does not abort the scanning/cleaning when currently scanning/cleaning and setting the switch to off. The API is missing this feature unfortunately.
+- Multiple running Kodis in one homebridge instance are not supported: In this early stage of development you can't use multipe running Kodis in a single homebridge instance. So please only configure one platform for homebridge-kodi per homebridge instance.
+- Library scan & clean: The current scan/clean status is not displayed in HomeKit. Also it does not abort the scanning/cleaning when currently scanning/cleaning and setting the switch to off. The API is missing this feature unfortunately.
 - Only internal players are supported right now.
 
 ## Contributors
@@ -105,10 +153,10 @@ The development of this plugin is in an very early stage.
 Many thanks go to
 
 - [Kodi-Team](https://kodi.tv) for their excellent work on Kodi and their JSON-RPC-API that makes this plugin possible
-- [SmartApfel - HomeKit Community](necessary) for their interest in Smart Home Accessories and their motivation to develop and test great homebridge plugins
+- [SmartApfel - HomeKit Community](necessary) for their interest in smart home accessories and their motivation to develop and test great homebridge plugins
 - [naofireblade](https://github.com/naofireblade) for his plugins, e.g. homebridge-weather-plus that helped me personally  developing this plugin
 - [elpheria](https://github.com/elpheria) for their rpc-websockets library (the only working one I found to support notifications with the Kodi JSON-RPC-API that are needed to get aware of changes in Kodi outside from homebridge, e.g. from remote controls)
 
 ## Attribution
 
-- [Powered by Kodi](https://kodi.tv)
+- Powered by [Kodi](https://kodi.tv)
