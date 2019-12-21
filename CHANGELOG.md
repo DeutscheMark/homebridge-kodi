@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0
+
+**ATTENTION - NEW CONFIGURATION NEEDED - PLEASE UPDATE BEFORE UPDATING!**
+
+* New and changed configuration parameters. Please see [readme](https://github.com/DeutscheMark/homebridge-kodi/blob/master/README.md).
+* New TV accessory `television` > `controls`: Add any menu items you want as inputs. Includes the TV Remote for controlling Kodi.
+* New TV accessory `television` > `tv`: Add any TV channels you want as inputs. Includes the TV Remote for controlling Kodi.
+* Fixes a bug when switching play and pause while automating. [#7](https://github.com/DeutscheMark/homebridge-kodi/issues/7)
+
 ## 0.2.2
 
 * Playback of any video and audio is now supported (even web and live content e.g. YouTube).
