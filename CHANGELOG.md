@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1
+
+**ATTENTION - NEW CONFIGURATION NEEDED - PLEASE UPDATE BEFORE UPDATING FROM 0.2.x!**
+
+* Fixed optional configuration parameters not being optional. [#7](https://github.com/DeutscheMark/homebridge-kodi/issues/7)
+
 ## 0.3.0
 
 **ATTENTION - NEW CONFIGURATION NEEDED - PLEASE UPDATE BEFORE UPDATING!**
