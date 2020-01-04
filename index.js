@@ -57,18 +57,18 @@ function KodiPlatform(log, config, api) {
     this.username = this.config.username || 'kodi';
     this.password = this.config.password || 'kodi';
     this.polling = this.config.polling || 10;
-    this.tvConfig = this.config.television.controls || false;
-    this.tvMenuItemsConfig = this.config.television.controls.menuitems || [];
-    this.tvChannelsConfig = this.config.television.tv.channels || false;
-    this.tvChannelsChannelsConfig = this.config.television.tv.channels || [];
-    this.playerPlayConfig = this.config.player.play || false;
-    this.playerPauseConfig = this.config.player.pause || false;
-    this.playerStopConfig = this.config.player.stop || false;
-    this.applicationVolumeConfig = this.config.application.volume || false;
-    this.videoLibraryScanConfig = this.config.videolibrary.scan || false;
-    this.videoLibraryCleanConfig = this.config.videolibrary.clean || false;
-    this.audioLibraryScanConfig = this.config.audiolibrary.scan || false;
-    this.audioLibraryCleanConfig = this.config.audiolibrary.clean || false;
+    this.tvConfig = this.config.television && this.config.television.controls || false;
+    this.tvMenuItemsConfig = this.config.television && this.config.television.controls.menuitems || [];
+    this.tvChannelsConfig = this.config.television && this.config.television.tv && this.config.television.tv.channels || false;
+    this.tvChannelsChannelsConfig = this.config.television && this.config.television.tv && this.config.television.tv.channels || [];
+    this.playerPlayConfig = this.config.player && this.config.player.play || false;
+    this.playerPauseConfig = this.config.player && this.config.player.pause || false;
+    this.playerStopConfig = this.config.player && this.config.player.stop || false;
+    this.applicationVolumeConfig = this.config.application && this.config.application.volume || false;
+    this.videoLibraryScanConfig = this.config.videolibrary && this.config.videolibrary.scan || false;
+    this.videoLibraryCleanConfig = this.config.videolibrary && this.config.videolibrary.clean || false;
+    this.audioLibraryScanConfig = this.config.audiolibrary && this.config.audiolibrary.scan || false;
+    this.audioLibraryCleanConfig = this.config.audiolibrary && this.config.audiolibrary.clean || false;
 
     // Add Information Service
 
