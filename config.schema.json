@@ -53,7 +53,7 @@
                 "default": false
             },
             "television": {
-                "title": "TV Accessories",
+                "title": "<h4>TV Accessories</h4>",
                 "type": "object",
                 "properties": {
                     "controls": {
@@ -126,7 +126,7 @@
                 }
             },
             "player": {
-                "title": "Player",
+                "title": "<h4>Player</h4>",
                 "type": "object",
                 "properties": {
                     "play": {
@@ -150,7 +150,7 @@
                 }
             },
             "application": {
-                "title": "Application",
+                "title": "<h4>Application</h4>",
                 "type": "object",
                 "properties": {
                     "volume": {
@@ -162,7 +162,7 @@
                 }
             },
             "videolibrary": {
-                "title": "Video Library",
+                "title": "<h4>Video Library</h4>",
                 "type": "object",
                 "properties": {
                     "scan": {
@@ -180,7 +180,7 @@
                 }
             },
             "audiolibrary": {
-                "title": "Audio Library",
+                "title": "<h4>Audio Library</h4>",
                 "type": "object",
                 "properties": {
                     "scan": {
@@ -197,29 +197,6 @@
                     }
                 }
             }
-        }
-    },
-    "nonDefaultFormItems": ["television", "player", "application", "videolibrary", "audiolibrary"],
-    "customFormItems": {
-        "television": {
-            "type": "fieldset",
-            "expandable": true
-        },
-        "player": {
-            "type": "fieldset",
-            "expandable": true
-        },
-        "application": {
-            "type": "fieldset",
-            "expandable": true
-        },
-        "videolibrary": {
-            "type": "fieldset",
-            "expandable": true
-        },
-        "audiolibrary": {
-            "type": "fieldset",
-            "expandable": true
         }
     },
     "display": null
