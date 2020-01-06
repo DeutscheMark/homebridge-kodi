@@ -62,6 +62,7 @@ Below is an example for all available parameters and accessories of this plugin.
             "username": "kodi",
             "password": "kodi",
             "polling": 10,
+            "debug": true,
             "television": {
                 "controls": {
                     "menuitems": [
@@ -109,8 +110,7 @@ Below is an example for all available parameters and accessories of this plugin.
             "audiolibrary": {
                 "scan": true,
                 "clean": true
-            },
-            "debug": true
+            }
         }
 ]
 ```
@@ -118,15 +118,16 @@ Below is an example for all available parameters and accessories of this plugin.
 ### Settings
 
 - `name` is the name of the Kodi instance, optional, default "Kodi"
-- `host` is the host or IP of the Kodi instance, optional, default "localhost"
+- `host` is the IP address or hostname of the Kodi instance, optional, default "localhost"
 - `port` is the port set for the Kodi remote control, optional, default "8080"
 - `username` is the username set for the Kodi remote control, optional, default "kodi"
 - `password` is the password set for the Kodi remote control, optional, default "kodi"
 - `polling` is the polling rate in seconds for updating all accessories when playing, optional, default 10
+- `debug` enables logging for all events and status updates, default false
 - `television` > `controls` is a TV accessory for changing the current menu in Kodi, it also enables remote control in iOS/iPadOS for controlling the GUI, optional, default false
-- `television` > `controls` > `menuitems` is an array of menu items that can be opened in Kodi.
+- `television` > `controls` > `menuitems` is an array of menu items that can be opened in Kodi. See example config for all available menu items
 - `television` > `tv` is a TV accessory for watching TV in Kodi, it also enables remote control in iOS/iPadOS for controlling the GUI, optional, default false
-- `television` > `tv` > `channels` is an array of TV channels that can be switched to in Kodi. Channel names must be exactly the same as in Kodi for them to work.
+- `television` > `tv` > `channels` is an array of TV channels that can be switched to in Kodi. Channel names must be exactly the same as in Kodi for them to work
 - `player` > `play` is an alternative switch for controlling the playback in Kodi, optional, default false
 - `player` > `pause` is a switch for pausing the current playback in Kodi, optional, default false
 - `player` > `stop` is a switch for stopping the current playback in Kodi, optional, default false
@@ -135,7 +136,6 @@ Below is an example for all available parameters and accessories of this plugin.
 - `videolibrary` > `clean` is a switch for starting a cleaning of the video library in Kodi, optional, default false
 - `audiolibrary` > `scan` is a switch for starting a scanning of the audio library in Kodi, optional, default false
 - `audiolibrary` > `clean` is a switch for starting a cleaning of the audio library in Kodi, optional, default false
-- `debug` enables logging for all events and status updates, default false
 
 ## Coming Next
 
