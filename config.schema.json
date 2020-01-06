@@ -1,0 +1,226 @@
+{
+    "pluginAlias": "Kodi",
+    "pluginType": "platform",
+    "singular": true,
+    "headerDisplay": "Homebridge plugin for Kodi/XBMC",
+    "footerDisplay": "For a detailed description, see the [readme](https://github.com/DeutscheMark/homebridge-kodi/blob/master/README.md)",
+    "schema": {
+        "type": "object",
+        "properties": {
+            "name": {
+                "title": "Name",
+                "type": "string",
+                "description": "Will be used for all accessories as prefix.",
+                "default": "Kodi",
+                "required": true
+            },
+            "host": {
+                "title": "IP Address / Hostname",
+                "type": "string",
+                "description": "Kodi HTTP remote control ip address/hostname. (Default: localhost)",
+                "format": "hostname",
+                "default": "localhost"
+            },
+            "port": {
+                "title": "Port",
+                "type": "string",
+                "description": "Kodi HTTP remote control port. (Default: 8080)",
+                "pattern": "^([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$",
+                "default": "8080"
+            },
+            "username": {
+                "title": "Username",
+                "type": "string",
+                "description": "Kodi HTTP remote control username. (Default: kodi)",
+                "default": "kodi"
+            },
+            "password": {
+                "title": "Password",
+                "type": "string",
+                "description": "Kodi HTTP remote control password. (Default: kodi)",
+                "default": "kodi"
+            },
+            "polling": {
+                "title": "Polling",
+                "type": "integer",
+                "description": "Polling rate for updates in seconds. (Default: 10)",
+                "default": 10
+            },
+            "debug": {
+                "title": "Debug",
+                "type": "boolean",
+                "description": "Enable debugging for the plugin. (Caution: When enabled a lot of logs will be written depending on the polling rate)",
+                "default": false
+            },
+            "television": {
+                "title": "TV Accessories",
+                "type": "object",
+                "properties": {
+                    "controls": {
+                        "title": "<h5>TV Control Accessory</h5>",
+                        "type": "object",
+                        "properties": {
+                            "menuitems": {
+                                "title": "<h6>Menu Items</h6>",
+                                "type": "array",
+                                "description": "Add a TV accessory for menu items with Kodi remote control. (Enable accessory with at least one menu item selected)",
+                                "inline": true,
+                                "items": {
+                                    "title": "Menu Item",
+                                    "type": "string",
+                                    "enum": [
+                                        "home",
+                                        "settings",
+                                        "movies",
+                                        "tvshows",
+                                        "tv",
+                                        "music",
+                                        "musicvideos",
+                                        "radio",
+                                        "games",
+                                        "addons",
+                                        "pictures",
+                                        "videos",
+                                        "favorites",
+                                        "weather"
+                                    ],
+                                    "titleMap": {
+                                        "home": "Home",
+                                        "settings": "Settings",
+                                        "movies": "Movies",
+                                        "tvshows": "TV shows",
+                                        "tv": "TV",
+                                        "music": "Music",
+                                        "musicvideos": "Music videos",
+                                        "radio": "Radio",
+                                        "games": "Games",
+                                        "addons": "Add-ons",
+                                        "pictures": "Pictures",
+                                        "videos": "Videos",
+                                        "favorites": "Favorites",
+                                        "weather": "Weather"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "tv": {
+                        "title": "<h5>TV Channels Accessory</h5>",
+                        "type": "object",
+                        "properties": {
+                            "channels": {
+                                "title": "<h6></h6>",
+                                "type": "array",
+                                "items": {
+                                    "title": "Channel Name",
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "": {
+                        "title": "",
+                        "type": "object",
+                        "description": "Add a television accessory for menu items with Kodi remote control. (Enable accessory with at least one menu item selected)"
+                    }
+                }
+            },
+            "player": {
+                "title": "Player",
+                "type": "object",
+                "properties": {
+                    "play": {
+                        "title": "Play",
+                        "type": "boolean",
+                        "description": "Add a switch for the playback status.",
+                        "default": false
+                    },
+                    "pause": {
+                        "title": "Pause",
+                        "type": "boolean",
+                        "description": "Add a switch for pausing the playback.",
+                        "default": false
+                    },
+                    "stop": {
+                        "title": "Stop",
+                        "type": "boolean",
+                        "description": "Add a switch for stopping the playback.",
+                        "default": false
+                    }
+                }
+            },
+            "application": {
+                "title": "Application",
+                "type": "object",
+                "properties": {
+                    "volume": {
+                        "title": "Volume",
+                        "type": "boolean",
+                        "description": "Add a lightbulb accessory for Kodi's application volume.",
+                        "default": false
+                    }
+                }
+            },
+            "videolibrary": {
+                "title": "Video Library",
+                "type": "object",
+                "properties": {
+                    "scan": {
+                        "title": "Scan",
+                        "type": "boolean",
+                        "description": "Add a switch for scanning the video library.",
+                        "default": false
+                    },
+                    "clean": {
+                        "title": "Clean",
+                        "type": "boolean",
+                        "description": "Add a switch for scanning the video library.",
+                        "default": false
+                    }
+                }
+            },
+            "audiolibrary": {
+                "title": "Audio Library",
+                "type": "object",
+                "properties": {
+                    "scan": {
+                        "title": "Scan",
+                        "type": "boolean",
+                        "description": "Add a switch for scanning the audio library.",
+                        "default": false
+                    },
+                    "clean": {
+                        "title": "Clean",
+                        "type": "boolean",
+                        "description": "Add a switch for cleaning the audio library.",
+                        "default": false
+                    }
+                }
+            }
+        }
+    },
+    "nonDefaultFormItems": ["television", "player", "application", "videolibrary", "audiolibrary"],
+    "customFormItems": {
+        "television": {
+            "type": "fieldset",
+            "expandable": true
+        },
+        "player": {
+            "type": "fieldset",
+            "expandable": true
+        },
+        "application": {
+            "type": "fieldset",
+            "expandable": true
+        },
+        "videolibrary": {
+            "type": "fieldset",
+            "expandable": true
+        },
+        "audiolibrary": {
+            "type": "fieldset",
+            "expandable": true
+        }
+    },
+    "display": null
+}
