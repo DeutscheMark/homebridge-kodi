@@ -44,26 +44,26 @@
                 "title": "Polling",
                 "type": "integer",
                 "description": "Polling rate for updates in seconds. (Default: 10)",
-                "default": 10
+                "default": 10,
+                "minimum": 1
             },
             "debug": {
                 "title": "Debug",
                 "type": "boolean",
-                "description": "Enable debugging for the plugin. (Caution: When enabled a lot of logs will be written depending on the polling rate)",
+                "description": "Enable debugging for the plugin. <em class='text-danger'>(When enabled a lot of logs will be written depending on the polling rate.)</em>",
                 "default": false
             },
             "television": {
-                "title": "<h4>TV Accessories</h4>",
+                "title": "TV Accessories",
                 "type": "object",
                 "properties": {
                     "controls": {
-                        "title": "<h5>TV Control Accessory</h5>",
+                        "title": "TV Control Accessory",
                         "type": "object",
                         "properties": {
                             "menuitems": {
-                                "title": "<h6>Menu Items</h6>",
+                                "title": "Menu Items",
                                 "type": "array",
-                                "description": "Add a TV accessory for menu items with Kodi remote control. (Enable accessory with at least one menu item selected)",
                                 "inline": true,
                                 "items": {
                                     "title": "Menu Item",
@@ -105,11 +105,11 @@
                         }
                     },
                     "tv": {
-                        "title": "<h5>TV Channels Accessory</h5>",
+                        "title": "TV Channels Accessory",
                         "type": "object",
                         "properties": {
                             "channels": {
-                                "title": "<h6></h6>",
+                                "title": "Channel",
                                 "type": "array",
                                 "items": {
                                     "title": "Channel Name",
@@ -117,16 +117,11 @@
                                 }
                             }
                         }
-                    },
-                    "": {
-                        "title": "",
-                        "type": "object",
-                        "description": "Add a television accessory for menu items with Kodi remote control. (Enable accessory with at least one menu item selected)"
                     }
                 }
             },
             "player": {
-                "title": "<h4>Player</h4>",
+                "title": "Player",
                 "type": "object",
                 "properties": {
                     "play": {
@@ -150,7 +145,7 @@
                 }
             },
             "application": {
-                "title": "<h4>Application</h4>",
+                "title": "Application",
                 "type": "object",
                 "properties": {
                     "volume": {
@@ -162,7 +157,7 @@
                 }
             },
             "videolibrary": {
-                "title": "<h4>Video Library</h4>",
+                "title": "Video Library",
                 "type": "object",
                 "properties": {
                     "scan": {
@@ -180,7 +175,7 @@
                 }
             },
             "audiolibrary": {
-                "title": "<h4>Audio Library</h4>",
+                "title": "Audio Library",
                 "type": "object",
                 "properties": {
                     "scan": {
@@ -199,5 +194,125 @@
             }
         }
     },
+    
+    "layout": [
+        "name",
+        "host",
+        "port",
+        {
+            "type": "fieldset",
+            "title": "User Credentials",
+            "items": [
+                "username",
+                "password"
+            ]
+        },
+        {
+            "type": "fieldset",
+            "title": "Settings",
+            "items": [
+                "polling",
+                "debug"
+            ]
+        },
+        {
+            "type": "fieldset",
+            "expandable": true,
+            "expanded": true,
+            "title": "TV Accessories",
+            "items": [
+                {
+                    "type": "help",
+                    "helpvalue": "<h6>TV Controls Accessory</h6><em class='primary-text'>Add a TV accessory for menu items with Kodi remote control. (Enable accessory with at least one menu item selected)</em>"
+                },
+                {
+                    "nodescription": true,
+                    "notitle": true,
+                    "key": "television.controls.menuitems",
+                    "type": "checkboxes",
+                    "items": [
+                        {
+                            "type": "div",
+                            "displayFlex": true,
+                            "flex-direction": "row",
+                            "items": [
+                                {
+                                    "key": "television.controls.menuitems[]",
+                                    "flex": "1 1 50px",
+                                    "notitle": true,
+                                    "placeholder": "Enter channel name..."
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "type": "help",
+                    "helpvalue": "<h6>TV Channels Accessory</h6><em class='primary-text'>Add a TV accessory for menu items with Kodi remote control. (Enable accessory with at least one menu item selected)</em>"
+                },
+                {
+                    "nodescription": true,
+                    "notitle": true,
+                    "key": "television.tv.channels",
+                    "type": "array",
+                    "items": [
+                        {
+                            "type": "div",
+                            "displayFlex": true,
+                            "flex-direction": "row",
+                            "items": [
+                                {
+                                    "key": "television.tv.channels[]",
+                                    "flex": "1 1 50px",
+                                    "notitle": true,
+                                    "placeholder": "Enter channel name..."
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "fieldset",
+            "title": "Player",
+            "expandable": true,
+            "expanded": false,
+            "items": [
+                "player.play",
+                "player.pause",
+                "player.stop"
+            ]
+        },
+        {
+            "type": "fieldset",
+            "expandable": true,
+            "expanded": false,
+            "title": "Application",
+            "items": [
+                "application.volume"
+            ]
+        },
+        {
+            "type": "fieldset",
+            "expandable": true,
+            "expanded": false,
+            "title": "Video Library",
+            "items": [
+                "videolibrary.scan",
+                "videolibrary.clean"
+            ]
+        },
+        {
+            "type": "fieldset",
+            "expandable": true,
+            "expanded": false,
+            "title": "Audio Library",
+            "items": [
+                "audiolibrary.scan",
+                "audiolibrary.clean"
+            ]
+        }
+    ],
     "display": null
 }
