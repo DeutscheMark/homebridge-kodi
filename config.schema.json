@@ -50,7 +50,7 @@
             "debug": {
                 "title": "Debug",
                 "type": "boolean",
-                "description": "Enable debugging for the plugin. <em class='text-danger'>(When enabled a lot of logs will be written depending on the polling rate.)</em>",
+                "description": "Enable debugging for the plugin.<br><em class='text-danger'>When enabled a lot of logs will be written depending on the polling rate.</em>",
                 "default": false
             },
             "television": {
@@ -194,7 +194,6 @@
             }
         }
     },
-    
     "layout": [
         "name",
         "host",
@@ -218,7 +217,7 @@
         {
             "type": "fieldset",
             "expandable": true,
-            "expanded": true,
+            "expanded": false,
             "title": "TV Accessories",
             "items": [
                 {
@@ -248,7 +247,7 @@
                 },
                 {
                     "type": "help",
-                    "helpvalue": "<h6>TV Channels Accessory</h6><em class='primary-text'>Add a TV accessory for menu items with Kodi remote control. (Enable accessory with at least one menu item selected)</em>"
+                    "helpvalue": "<h6>TV Channels Accessory</h6><em class='primary-text'>Add a TV accessory for tv channels with Kodi remote control. (Enable accessory with at least one channel name added)</em>"
                 },
                 {
                     "nodescription": true,
