@@ -5,7 +5,7 @@
 **ATTENTION - NEW CONFIGURATION NEEDED - PLEASE UPDATE BEFORE UPDATING FROM 0.2.x!**
 
 * Added support for Config UI X settings GUI.
-* Fixed optional configuration parameters not being optional. [#7](https://github.com/DeutscheMark/homebridge-kodi/issues/7)
+* Fixed optional configuration parameters not being optional. [#9](https://github.com/DeutscheMark/homebridge-kodi/issues/9)
 
 ## 0.3.0
 
