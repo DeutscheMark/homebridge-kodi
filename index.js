@@ -61,6 +61,7 @@ function KodiPlatform(log, config, api) {
     this.tvMenuItemsConfig = this.config.television && this.config.television.controls.menuitems || [];
     this.tvChannelsConfig = this.config.television && this.config.television.tv && this.config.television.tv.channels || false;
     this.tvChannelsChannelsConfig = this.config.television && this.config.television.tv && this.config.television.tv.channels || [];
+    this.playerMainConfig = this.config.player && this.config.player.main || true;
     this.playerPlayConfig = this.config.player && this.config.player.play || false;
     this.playerPauseConfig = this.config.player && this.config.player.pause || false;
     this.playerStopConfig = this.config.player && this.config.player.stop || false;
@@ -185,9 +186,11 @@ function KodiPlatform(log, config, api) {
         this.accessoriesList.push(new kodiTelevision.TelevisionAccessory(this, api, "Channels", televisionChannelsService, televisionChannelsSpeakerService, inputServices, inputNames, inputIdentifiers, name, version));
     }
     name = this.name + " Player";
-    this.log("Adding " + name);
     playerLightbulbService = new Service.Lightbulb(name);
-    this.accessoriesList.push(new kodiPlayer.PlayerLightbulbAccessory(this, api, playerLightbulbService, name, version));
+    if (this.playerMainConfig) {
+        this.log("Adding " + name);
+        this.accessoriesList.push(new kodiPlayer.PlayerLightbulbAccessory(this, api, playerLightbulbService, name, version));
+    }
     name = this.name + " Player Play";
     playerPlaySwitchService = new Service.Switch(name);
     if (this.playerPlayConfig) {
