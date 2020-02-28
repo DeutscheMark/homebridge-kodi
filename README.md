@@ -96,6 +96,7 @@ Below is an example for all available parameters and accessories of this plugin.
                 }
             },
             "player": {
+                "main": true,
                 "play": true,
                 "pause": true,
                 "stop": true
@@ -128,6 +129,7 @@ Below is an example for all available parameters and accessories of this plugin.
 - `television` > `controls` > `menuitems` is an array of menu items that can be opened in Kodi. See example config for all available menu items
 - `television` > `tv` is a TV accessory for watching TV in Kodi, it also enables remote control in iOS/iPadOS for controlling the GUI, optional, default false
 - `television` > `tv` > `channels` is an array of TV channels that can be switched to in Kodi. Channel names must be exactly the same as in Kodi for them to work
+- `player` > `main` is the main lightbulb accessory of this plugin for controlling the playback in Kodi, shows extra information of the playing item in Eve, optional, default true
 - `player` > `play` is an alternative switch for controlling the playback in Kodi, optional, default false
 - `player` > `pause` is a switch for pausing the current playback in Kodi, optional, default false
 - `player` > `stop` is a switch for stopping the current playback in Kodi, optional, default false
