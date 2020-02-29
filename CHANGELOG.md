@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.2
+
+**ATTENTION - NEW CONFIGURATION NEEDED - PLEASE UPDATE BEFORE UPDATING FROM 0.2.x!**
+
+* Added `player` > `main` for hiding the main light bulb accessory. [#13](https://github.com/DeutscheMark/homebridge-kodi/issues/13)
+
 ## 0.3.1
 
 **ATTENTION - NEW CONFIGURATION NEEDED - PLEASE UPDATE BEFORE UPDATING FROM 0.2.x!**
