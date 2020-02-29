@@ -61,7 +61,7 @@ function KodiPlatform(log, config, api) {
     this.tvMenuItemsConfig = this.config.television && this.config.television.controls.menuitems || [];
     this.tvChannelsConfig = this.config.television && this.config.television.tv && this.config.television.tv.channels || false;
     this.tvChannelsChannelsConfig = this.config.television && this.config.television.tv && this.config.television.tv.channels || [];
-    this.playerMainConfig = this.config.player && this.config.player.main || true;
+    this.playerMainConfig = this.config.player && this.config.player.main;
     this.playerPlayConfig = this.config.player && this.config.player.play || false;
     this.playerPauseConfig = this.config.player && this.config.player.pause || false;
     this.playerStopConfig = this.config.player && this.config.player.stop || false;
@@ -187,7 +187,7 @@ function KodiPlatform(log, config, api) {
     }
     name = this.name + " Player";
     playerLightbulbService = new Service.Lightbulb(name);
-    if (this.playerMainConfig) {
+    if (this.playerMainConfig || typeof this.playerMainConfig === 'undefined') {
         this.log("Adding " + name);
         this.accessoriesList.push(new kodiPlayer.PlayerLightbulbAccessory(this, api, playerLightbulbService, name, version));
     }
