@@ -47,7 +47,6 @@
     },
     "dependencies": {
         "debug": "^4.1.1",
-        "request": "^2.88.0",
         "rpc-websockets": "5.0.14",
         "r2": "^2.0.1",
         "setinterval-plus": "^1.0.3"
