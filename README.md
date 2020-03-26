@@ -4,7 +4,7 @@
 
 # Homebridge Kodi
 
-## homebridge-kodi
+## homebridge-kodi [![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple?style=flat-square)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
 
 ![npm](https://img.shields.io/npm/v/homebridge-kodi?color=green&style=flat-square)
 ![npm](https://img.shields.io/npm/dw/homebridge-kodi?color=success&style=flat-square)
