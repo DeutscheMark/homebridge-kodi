@@ -49,6 +49,8 @@ function KodiPlatform(log, config, api) {
     this.log.error = log.error;
     this.accessoriesList = [];
 
+    let UUIDGen = api.hap.uuid;
+
     this.log("Init Homebridge-Kodi");
 
     this.name = this.config.name;
@@ -77,7 +79,7 @@ function KodiPlatform(log, config, api) {
     this.informationService
         .setCharacteristic(Characteristic.Manufacturer, "github.com DeutscheMark")
         .setCharacteristic(Characteristic.Model, "Homebridge-Kodi")
-        .setCharacteristic(Characteristic.SerialNumber, version)
+        .setCharacteristic(Characteristic.SerialNumber, UUIDGen.generate(this.name))
         .setCharacteristic(Characteristic.FirmwareRevision, version);
 
     // Add Services
