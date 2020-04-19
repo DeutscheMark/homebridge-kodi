@@ -4,7 +4,7 @@
 
 **ATTENTION - NEW CONFIGURATION NEEDED - PLEASE UPDATE BEFORE UPDATING FROM 0.2.x!**
 
-* Setting a unique serial number for all accessories to fix problems with Eve v4.2. [homebridge/homebridge#2503](https://github.com/homebridge/homebridge/issues/2503).
+* Setting a unique serial number for all accessories to fix problems with Eve v4.2. [homebridge/homebridge#2503](https://github.com/homebridge/homebridge/issues/2503)
 
 ## 0.3.2
 
