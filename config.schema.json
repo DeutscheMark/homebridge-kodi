@@ -124,6 +124,12 @@
                 "title": "Player",
                 "type": "object",
                 "properties": {
+                    "main": {
+                        "title": "Main",
+                        "type": "boolean",
+                        "description": "Add a light bulb accessory for the playback status.",
+                        "default": true
+                    },
                     "play": {
                         "title": "Play",
                         "type": "boolean",

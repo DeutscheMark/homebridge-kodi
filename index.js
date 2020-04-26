@@ -49,6 +49,8 @@ function KodiPlatform(log, config, api) {
     this.log.error = log.error;
     this.accessoriesList = [];
 
+    let UUIDGen = api.hap.uuid;
+
     this.log("Init Homebridge-Kodi");
 
     this.name = this.config.name;
@@ -61,6 +63,7 @@ function KodiPlatform(log, config, api) {
     this.tvMenuItemsConfig = this.config.television && this.config.television.controls.menuitems || [];
     this.tvChannelsConfig = this.config.television && this.config.television.tv && this.config.television.tv.channels || false;
     this.tvChannelsChannelsConfig = this.config.television && this.config.television.tv && this.config.television.tv.channels || [];
+    this.playerMainConfig = this.config.player && this.config.player.main;
     this.playerPlayConfig = this.config.player && this.config.player.play || false;
     this.playerPauseConfig = this.config.player && this.config.player.pause || false;
     this.playerStopConfig = this.config.player && this.config.player.stop || false;
@@ -76,7 +79,7 @@ function KodiPlatform(log, config, api) {
     this.informationService
         .setCharacteristic(Characteristic.Manufacturer, "github.com DeutscheMark")
         .setCharacteristic(Characteristic.Model, "Homebridge-Kodi")
-        .setCharacteristic(Characteristic.SerialNumber, version)
+        .setCharacteristic(Characteristic.SerialNumber, UUIDGen.generate(this.name))
         .setCharacteristic(Characteristic.FirmwareRevision, version);
 
     // Add Services
@@ -185,9 +188,11 @@ function KodiPlatform(log, config, api) {
         this.accessoriesList.push(new kodiTelevision.TelevisionAccessory(this, api, "Channels", televisionChannelsService, televisionChannelsSpeakerService, inputServices, inputNames, inputIdentifiers, name, version));
     }
     name = this.name + " Player";
-    this.log("Adding " + name);
     playerLightbulbService = new Service.Lightbulb(name);
-    this.accessoriesList.push(new kodiPlayer.PlayerLightbulbAccessory(this, api, playerLightbulbService, name, version));
+    if (this.playerMainConfig || typeof this.playerMainConfig === 'undefined') {
+        this.log("Adding " + name);
+        this.accessoriesList.push(new kodiPlayer.PlayerLightbulbAccessory(this, api, playerLightbulbService, name, version));
+    }
     name = this.name + " Player Play";
     playerPlaySwitchService = new Service.Switch(name);
     if (this.playerPlayConfig) {
