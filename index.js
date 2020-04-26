@@ -256,7 +256,7 @@ function KodiPlatform(log, config, api) {
 
     // Reset all services on start
 
-    this.resetAllServices();
+    this.resetAllServices(true);
 
     // Check volume on start
 
@@ -594,8 +594,12 @@ KodiPlatform.prototype = {
         });
     },
 
-    resetAllServices: function (withVolume) {
+    resetAllServices: function (completely) {
+        if (completely) {
         televisionControlsService.getCharacteristic(Characteristic.Active).updateValue(false);
+            applicationVolumeLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
+            applicationVolumeLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(0);
+        }
         televisionChannelsService.getCharacteristic(Characteristic.Active).updateValue(false);
         playerLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
         playerLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(0);
@@ -613,10 +617,6 @@ KodiPlatform.prototype = {
         videoLibraryCleanSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
         audioLibraryScanSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
         audioLibraryCleanSwitchService.getCharacteristic(Characteristic.On).updateValue(false);
-        if (withVolume) {
-            applicationVolumeLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
-            applicationVolumeLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(0);
-        }
     },
 
     updateApplicationVolumeService: function () {
