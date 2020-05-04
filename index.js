@@ -299,6 +299,15 @@ function KodiPlatform(log, config, api) {
             intervalUpdateKodiPlayer.stop();
         }
     });
+
+    api.on('shutdown', function () {
+        this.log('Shutdown');
+        intervalUpdateKodiPlayer.stop();
+    }.bind(this));
+
+    api.on('didFinishLaunching', function () {
+        this.log('DidFinishLaunching');
+    }.bind(this));
 }
 
 KodiPlatform.prototype = {
