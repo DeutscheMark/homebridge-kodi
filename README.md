@@ -64,6 +64,7 @@ Below is an example for all available parameters and accessories of this plugin.
             "username": "kodi",
             "password": "kodi",
             "polling": 10,
+            "retrytime": 30,
             "debug": true,
             "television": {
                 "controls": {
@@ -126,6 +127,7 @@ Below is an example for all available parameters and accessories of this plugin.
 - `username` is the username set for the Kodi remote control, optional, default "kodi"
 - `password` is the password set for the Kodi remote control, optional, default "kodi"
 - `polling` is the polling rate in seconds for updating all accessories when playing, optional, default 10
+- `retrytime` is the time in seconds to retry when the Kodi instance is stopped or not found, optional, default 30
 - `debug` enables logging for all events and status updates, default false
 - `television` > `controls` is a TV accessory for changing the current menu in Kodi, it also enables remote control in iOS/iPadOS for controlling the GUI, optional, default false
 - `television` > `controls` > `menuitems` is an array of menu items that can be opened in Kodi. See example config for all available menu items

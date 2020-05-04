@@ -59,6 +59,7 @@ function KodiPlatform(log, config, api) {
     this.username = this.config.username || 'kodi';
     this.password = this.config.password || 'kodi';
     this.polling = this.config.polling || 10;
+    this.retrytime = this.config.retrytime || 30;
     this.tvConfig = this.config.television && this.config.television.controls || false;
     this.tvMenuItemsConfig = this.config.television && this.config.television.controls.menuitems || [];
     this.tvChannelsConfig = this.config.television && this.config.television.tv && this.config.television.tv.channels || false;
@@ -266,7 +267,7 @@ function KodiPlatform(log, config, api) {
 
     this.log("Starting Subscription to Kodi Notifications");
     this.kodiNotificationsSubscription();
-    intervalSubscriptionsKodiPlayer = new setIntervalPlus(this.kodiNotificationsSubscription.bind(this), 30 * 1000);
+    intervalSubscriptionsKodiPlayer = new setIntervalPlus(this.kodiNotificationsSubscription.bind(this), this.retrytime * 1000);
 
     // Intervalled Updating Start
 
@@ -505,7 +506,7 @@ KodiPlatform.prototype = {
                     });
                 });
             } else {
-                this.log("Kodi Notifications: Kodi does not seem to be running - Retry in 30 seconds");
+                this.log("Kodi Notifications: Kodi does not seem to be running - Retry in " + this.retrytime + " seconds");
             }
         });
     },

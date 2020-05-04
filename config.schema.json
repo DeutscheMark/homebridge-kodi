@@ -47,6 +47,13 @@
                 "default": 10,
                 "minimum": 1
             },
+            "retrytime": {
+                "title": "Retry After",
+                "type": "integer",
+                "description": "Time to retry connecting to Kodi in seconds. (Default: 30)",
+                "default": 30,
+                "minimum": 1
+            },
             "debug": {
                 "title": "Debug",
                 "type": "boolean",
