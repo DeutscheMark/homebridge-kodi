@@ -114,7 +114,50 @@ Below is an example for all available parameters and accessories of this plugin.
             "audiolibrary": {
                 "scan": true,
                 "clean": true
-            }
+            },
+            "commands": [
+                {
+                    "name": "Play Star Wars",
+                    "interval": 500,
+                    "sequence": [
+                        "home",
+                        "pageup",
+                        "up",
+                        "right",
+                        "right",
+                        "select",
+                        "select",
+                        "sendtext:star wars",
+                        "select",
+                        "select",
+                        "select"
+                    ]
+                },
+                {
+                    "name": "Open YouTube Add-on",
+                    "interval": 500,
+                    "sequence": [
+                        "home",
+                        "pageup",
+                        "up",
+                        "right",
+                        "right",
+                        "select",
+                        "down",
+                        "select",
+                        "sendtext:youtube",
+                        "select",
+                        "select"
+                    ]
+                },
+                {
+                    "name": "Next Chapter",
+                    "interval": 500,
+                    "sequence": [
+                        "executeaction:chapterorbigstepforward"
+                    ]
+                }
+            ]
         }
 ]
 ```
@@ -142,11 +185,32 @@ Below is an example for all available parameters and accessories of this plugin.
 - `videolibrary` > `clean` is a switch for starting a cleaning of the video library in Kodi, optional, default false
 - `audiolibrary` > `scan` is a switch for starting a scanning of the audio library in Kodi, optional, default false
 - `audiolibrary` > `clean` is a switch for starting a cleaning of the audio library in Kodi, optional, default false
+- `commands` is a list of switches for user defined sequences of commands sent to Kodi
+- `commands` > `name` is the name of the switch for the user defined sequence of commands
+- `commands` > `interval` is the number of milliseconds between each commands to wait, optional, default 500
+- `commands` > `sequence` is the sequence of commands sent to Kodi as array, see example config for all possible values
 
-## Coming Next
+## Supported Commands
 
-- Command lists
-- TV channel switches
+A variety of commands are supported: First and foremost all available inputs in Kodi and all actions that can be executed.
+
+Here is a list of all supported commands to date and how to use them:
+
+| Command | What does it do and how to use it? |
+|---------|------------------|
+| *home* | Goes to home window in GUI |
+| *down* | Navigate down in GUI |
+| *up* | Navigate up in GUI |
+| *left* | Navigate left in GUI |
+| *right* | Navigate right in GUI |
+| *select* | Select current item in GUI |
+| *back* | Goes back in GUI |
+| *info* | Shows the information dialog |
+| *contextmenu* | Shows the context menu |
+| *showcodec* | Show codec information of the playing item | |
+| *showosd* | Show the on-screen display for the current player | |
+| *sendtext* | Send a generic (unicode) text.<br>Just add the text you want to send, e.g. *"sendtext:Game of Thrones"* |
+| *executeaction* | Execute a specific action<br>Just add the action you want to perform, e.g. *"executeaction:smallstepback".*<br>You can find all the possible actions [here](https://kodi.wiki/view/JSON-RPC_API/v6#Input.Action) (Expand *JSON Schema Description* under *6.10.1*). |
 
 ## Known Problems
 
@@ -160,9 +224,10 @@ Many thanks go to
 
 - [Kodi-Team](https://kodi.tv) for their excellent work on Kodi and their JSON-RPC-API that makes this plugin possible
 - [SmartApfel - HomeKit Community](necessary) for their interest in smart home accessories and their motivation to develop and test great homebridge plugins
-- [naofireblade](https://github.com/naofireblade) for his plugins, e.g. homebridge-weather-plus that helped me personally  developing this plugin
+- [naofireblade](https://github.com/naofireblade) for his plugins, e.g. homebridge-weather-plus that helped me personally developing this plugin
 - [elpheria](https://github.com/elpheria) for their rpc-websockets library (the only working one I found to support notifications with the Kodi JSON-RPC-API that are needed to get aware of changes in Kodi outside from homebridge, e.g. from remote controls)
 
 ## Attribution
 
 - Powered by [Kodi](https://kodi.tv)
+
