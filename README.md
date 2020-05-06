@@ -187,8 +187,8 @@ Below is an example for all available parameters and accessories of this plugin.
 - `audiolibrary` > `clean` is a switch for starting a cleaning of the audio library in Kodi, optional, default false
 - `commands` is a list of switches for user defined sequences of commands sent to Kodi
 - `commands` > `name` is the name of the switch for the user defined sequence of commands
-- `commands` > `interval` is the number of milliseconds between each commands to wait, optional, default 500
-- `commands` > `sequence` is the sequence of commands sent to Kodi as array, see example config for all possible values
+- `commands` > `interval` is the number of milliseconds between each command to wait, optional, default 500
+- `commands` > `sequence` is the sequence of commands sent to Kodi as array, see supported commands below
 
 ## Supported Commands
 
