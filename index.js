@@ -12,7 +12,8 @@ const version = require('./package.json').version,
     kodiPlayer = require('./lib/kodiPlayer'),
     kodiApplication = require('./lib/kodiApplication'),
     kodiVideoLibrary = require('./lib/kodiVideoLibrary'),
-    kodiAudioLibrary = require('./lib/kodiAudioLibrary');
+    kodiAudioLibrary = require('./lib/kodiAudioLibrary'),
+    kodiCommand = require('./lib/kodiCommand');
 
 let Service,
     Characteristic,
@@ -73,6 +74,7 @@ function KodiPlatform(log, config, api) {
     this.videoLibraryCleanConfig = this.config.videolibrary && this.config.videolibrary.clean || false;
     this.audioLibraryScanConfig = this.config.audiolibrary && this.config.audiolibrary.scan || false;
     this.audioLibraryCleanConfig = this.config.audiolibrary && this.config.audiolibrary.clean || false;
+    this.commandsConfig = this.config.commands || [];
 
     // Add Information Service
 
@@ -241,6 +243,17 @@ function KodiPlatform(log, config, api) {
     if (this.audioLibraryCleanConfig) {
         this.log("Adding " + name);
         this.accessoriesList.push(new kodiAudioLibrary.AudioLibraryCleanSwitchAccessory(this, api, audioLibraryCleanSwitchService, name, version));
+    }
+    for (let index = 0; index < this.commandsConfig.length; index++) {
+        let commandConfig = this.commandsConfig[index];
+        if (commandConfig && commandConfig.name && commandConfig.name != "" && commandConfig.sequence && commandConfig.sequence.length != 0) {
+            let name = commandConfig.name;
+            let commandSwitchAccessory = new Service.Switch(name);
+            this.log("Adding " + name);
+            this.accessoriesList.push(new kodiCommand.CommandSwitchAccessory(this, api, commandSwitchAccessory, commandConfig.interval, commandConfig.sequence, name, version));
+        } else {
+            this.log("Error adding sequence: " + commandConfig.name);
+        }
     }
 
     // Kodi Version
@@ -606,7 +619,7 @@ KodiPlatform.prototype = {
 
     resetAllServices: function (completely) {
         if (completely) {
-        televisionControlsService.getCharacteristic(Characteristic.Active).updateValue(false);
+            televisionControlsService.getCharacteristic(Characteristic.Active).updateValue(false);
             applicationVolumeLightbulbService.getCharacteristic(Characteristic.On).updateValue(false);
             applicationVolumeLightbulbService.getCharacteristic(Characteristic.Brightness).updateValue(0);
         }

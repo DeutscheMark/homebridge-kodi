@@ -57,7 +57,7 @@
             "debug": {
                 "title": "Debug",
                 "type": "boolean",
-                "description": "Enable debugging for the plugin.<br><em class='text-danger'>When enabled a lot of logs will be written depending on the polling rate.</em>",
+                "description": "Enable debugging for the plugin.<br><em class='text-danger'>When enabled a lot of logs will be written depending on the polling and retry rate.</em>",
                 "default": false
             },
             "television": {
@@ -65,7 +65,7 @@
                 "type": "object",
                 "properties": {
                     "controls": {
-                        "title": "TV Control Accessory",
+                        "title": "TV Controls",
                         "type": "object",
                         "properties": {
                             "menuitems": {
@@ -112,7 +112,7 @@
                         }
                     },
                     "tv": {
-                        "title": "TV Channels Accessory",
+                        "title": "TV Channels",
                         "type": "object",
                         "properties": {
                             "channels": {
@@ -204,78 +204,94 @@
                         "default": false
                     }
                 }
+            },
+            "commands": {
+                "title": "Command Sequences",
+                "type": "array",
+                "inline": true,
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "title": "Name",
+                            "type": "string",
+                            "required": true
+                        },
+                        "interval": {
+                            "title": "Interval",
+                            "type": "integer",
+                            "default": 200,
+                            "minimum": 1
+                        },
+                        "sequence": {
+                            "title": "Command",
+                            "type": "array",
+                            "required": true,
+                            "items": {
+                                "title": "Command",
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
             }
         }
     },
     "layout": [
         "name",
-        "host",
-        "port",
         {
+            "title": "IP Address & Port",
             "type": "fieldset",
+            "expandable": true,
+            "expanded": false,
+            "items": [
+                "host",
+                "port"
+            ]
+        },
+        {
             "title": "User Credentials",
+            "type": "fieldset",
+            "expandable": true,
+            "expanded": false,
             "items": [
                 "username",
                 "password"
             ]
         },
         {
-            "type": "fieldset",
             "title": "Settings",
+            "type": "fieldset",
+            "expandable": true,
+            "expanded": false,
             "items": [
                 "polling",
+                "retrytime",
                 "debug"
             ]
         },
         {
+            "title": "TV Controls",
             "type": "fieldset",
             "expandable": true,
             "expanded": false,
-            "title": "TV Accessories",
             "items": [
                 {
                     "type": "help",
                     "helpvalue": "<h6>TV Controls Accessory</h6><em class='primary-text'>Add a TV accessory for menu items with Kodi remote control. (Enable accessory with at least one menu item selected)</em>"
                 },
                 {
-                    "nodescription": true,
-                    "notitle": true,
                     "key": "television.controls.menuitems",
                     "type": "checkboxes",
+                    "nodescription": true,
+                    "notitle": true,
                     "items": [
                         {
                             "type": "div",
-                            "displayFlex": true,
-                            "flex-direction": "row",
+                            "displayFlex": false,
                             "items": [
                                 {
                                     "key": "television.controls.menuitems[]",
-                                    "flex": "1 1 50px",
-                                    "notitle": true,
-                                    "placeholder": "Enter channel name..."
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "type": "help",
-                    "helpvalue": "<h6>TV Channels Accessory</h6><em class='primary-text'>Add a TV accessory for tv channels with Kodi remote control. (Enable accessory with at least one channel name added)</em>"
-                },
-                {
-                    "nodescription": true,
-                    "notitle": true,
-                    "key": "television.tv.channels",
-                    "type": "array",
-                    "items": [
-                        {
-                            "type": "div",
-                            "displayFlex": true,
-                            "flex-direction": "row",
-                            "items": [
-                                {
-                                    "key": "television.tv.channels[]",
-                                    "flex": "1 1 50px",
                                     "notitle": true,
                                     "placeholder": "Enter channel name..."
                                 }
@@ -286,10 +302,43 @@
             ]
         },
         {
+            "title": "TV Channels",
             "type": "fieldset",
-            "title": "Player",
             "expandable": true,
             "expanded": false,
+            "nodescription": true,
+            "items": [
+                {
+                    "type": "help",
+                    "helpvalue": "<h6>TV Channels Accessory</h6><em class='primary-text'>Add a TV accessory for tv channels with Kodi remote control. (Enable accessory with at least one channel name added)</em>"
+                },
+                {
+                    "type": "array",
+                    "key": "television.tv.channels",
+                    "nodescription": true,
+                    "notitle": true,
+                    "items": [
+                        {
+                            "type": "div",
+                            "displayFlex": false,
+                            "items": [
+                                {
+                                    "key": "television.tv.channels[]",
+                                    "notitle": true,
+                                    "placeholder": "Enter channel name..."
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "title": "Player",
+            "type": "fieldset",
+            "expandable": true,
+            "expanded": false,
+            "nodescription": true,
             "items": [
                 "player.play",
                 "player.pause",
@@ -297,32 +346,91 @@
             ]
         },
         {
+            "title": "Application",
             "type": "fieldset",
             "expandable": true,
             "expanded": false,
-            "title": "Application",
+            "nodescription": true,
             "items": [
                 "application.volume"
             ]
         },
         {
+            "title": "Video Library",
             "type": "fieldset",
             "expandable": true,
             "expanded": false,
-            "title": "Video Library",
+            "nodescription": true,
             "items": [
                 "videolibrary.scan",
                 "videolibrary.clean"
             ]
         },
         {
+            "title": "Audio Library",
             "type": "fieldset",
             "expandable": true,
             "expanded": false,
-            "title": "Audio Library",
+            "nodescription": true,
             "items": [
                 "audiolibrary.scan",
                 "audiolibrary.clean"
+            ]
+        },
+        {
+            "title": "Command Sequences",
+            "type": "fieldset",
+            "expandable": true,
+            "expanded": false,
+            "nodescription": true,
+            "items": [
+                {
+                    "type": "help",
+                    "helpvalue": "<h6>Command Sequences</h6><em class='primary-text'>Add a command sequence accessory for Kodi.</em>"
+                },
+                {
+                    "key": "commands",
+                    "type": "array",
+                    "notitle": true,
+                    "nodescription": true,
+                    "items": [
+                        {
+                            "type": "div",
+                            "displayFlex": true,
+                            "flex-direction": "row",
+                            "flex-wrap": "wrap",
+                            "items": [
+                                {
+                                    "key": "commands[].name",
+                                    "flex": "1 1 70%",
+                                    "notitle": false,
+                                    "placeholder": "Enter command sequence name..."
+                                },
+                                {
+                                    "key": "commands[].interval",
+                                    "flex": "1 1 30%",
+                                    "notitle": false,
+                                    "placeholder": "Enter interval..."
+                                },
+                                {
+                                    "key": "commands[].sequence",
+                                    "flex": "1 1 100%",
+                                    "notitle": false,
+                                    "expandable": true,
+                                    "expanded": false,
+                                    "items": [
+                                        {
+                                            "key": "commands[].sequence[]",
+                                            "type": "string",
+                                            "notitle": true,
+                                            "placeholder": "Enter sequence..."
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
             ]
         }
     ],
