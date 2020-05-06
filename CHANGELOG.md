@@ -1,20 +1,23 @@
 # Changelog
 
-## 0.3.3
+## 0.4.0
 
-**ATTENTION - NEW CONFIGURATION NEEDED - PLEASE UPDATE BEFORE UPDATING FROM 0.2.x!**
+* New command sequence accessories for `commands`: Add accessories to run command sequences in Kodi.
+* Added `retrytime` for specifying the time between connection retries when Kodi is not running or not found.
+* Fixed not setting the audio and video library accessories to off on errors. [#15](https://github.com/DeutscheMark/homebridge-kodi/issues/15)
+* Fixed setting the control tv accessory falsely to off when stopping the playback. [#16](https://github.com/DeutscheMark/homebridge-kodi/issues/16)
+* Fixed playback seek with the player accessory with Kodi 19. [#17](https://github.com/DeutscheMark/homebridge-kodi/issues/17)
+* Fixed setting the on/off status for tv controls. [#18](https://github.com/DeutscheMark/homebridge-kodi/issues/18)
+
+## 0.3.3
 
 * Setting a unique serial number for all accessories to fix problems with Eve v4.2. [homebridge/homebridge#2503](https://github.com/homebridge/homebridge/issues/2503)
 
 ## 0.3.2
 
-**ATTENTION - NEW CONFIGURATION NEEDED - PLEASE UPDATE BEFORE UPDATING FROM 0.2.x!**
-
 * Added `player` > `main` for hiding the main light bulb accessory. [#13](https://github.com/DeutscheMark/homebridge-kodi/issues/13)
 
 ## 0.3.1
-
-**ATTENTION - NEW CONFIGURATION NEEDED - PLEASE UPDATE BEFORE UPDATING FROM 0.2.x!**
 
 * Added support for Config UI X settings GUI.
 * Fixed optional configuration parameters not being optional. [#9](https://github.com/DeutscheMark/homebridge-kodi/issues/9)
