@@ -3,7 +3,7 @@
 ## 0.4.0
 
 * New command sequence accessories for `commands`: Add accessories to run command sequences in Kodi.
-* Added `retrytime` for specifying the time between connection retries when Kodi is not running or not found.
+* Added `retrytime` to specify the time between connection retries when Kodi is not running or not found.
 * Fixed not setting the audio and video library accessories to off on errors. [#15](https://github.com/DeutscheMark/homebridge-kodi/issues/15)
 * Fixed setting the control tv accessory falsely to off when stopping the playback. [#16](https://github.com/DeutscheMark/homebridge-kodi/issues/16)
 * Fixed playback seek with the player accessory with Kodi 19. [#17](https://github.com/DeutscheMark/homebridge-kodi/issues/17)
