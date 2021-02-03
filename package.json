@@ -1,7 +1,7 @@
 {
     "displayName": "Kodi",
     "name": "homebridge-kodi",
-    "version": "1.0.0",
+    "version": "1.0.0-beta.1",
     "description": "Homebridge plugin that provides details and controls for Kodi",
     "license": "MIT",
     "files": [
