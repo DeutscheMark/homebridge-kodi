@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.0
+
+* Project converted to TypeScript. You shouldn't see any changes.
+
 ## 0.4.0
 
 * New command sequence accessories for `commands`: Add accessories to run command sequences in Kodi.
@@ -35,7 +39,7 @@
 
 * Playback of any video and audio is now supported (even web and live content e.g. YouTube).
 * Audio library (`audioLibraryScan` & `audioLibraryClean`) is now supported.
-* New `debug` config to enable/disable logging.
+* New `debug` config to enable/disable Logger.
 * Non running Kodi's are now supported (accessories will all just be off).
 * Fixed the warnings on startup.
 * Much better error handling.

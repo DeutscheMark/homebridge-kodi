@@ -1,11 +1,30 @@
 {
+    "displayName": "Kodi",
     "name": "homebridge-kodi",
-    "version": "0.4.0",
+    "version": "1.0.0",
     "description": "Homebridge plugin that provides details and controls for Kodi",
+    "license": "MIT",
+    "files": [
+        "LICENSE",
+        "dist",
+        "config.schema.json"
+    ],
+    "homepage": "https://github.com/DeutscheMark/homebridge-kodi#readme",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/DeutscheMark/homebridge-kodi.git"
+    },
+    "bugs": {
+        "url": "https://github.com/DeutscheMark/homebridge-kodi/issues"
+    },
     "author": {
         "name": "Daniel Müller",
         "email": "deutschemark88@gmail.com",
         "url": "https://github.com/DeutscheMark"
+    },
+    "funding": {
+        "type": "paypal",
+        "url": "https://paypal.me/DeutscheMark/5"
     },
     "keywords": [
         "homebridge",
@@ -41,35 +60,31 @@
         "smart home",
         "smarthome"
     ],
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/DeutscheMark/homebridge-kodi.git"
-    },
-    "license": "MIT",
-    "bugs": {
-        "url": "https://github.com/DeutscheMark/homebridge-kodi/issues"
-    },
-    "homepage": "https://github.com/DeutscheMark/homebridge-kodi#readme",
     "engines": {
-        "node": ">=7.10.1",
-        "homebridge": ">=0.4.53"
+        "node": ">=10.17.0",
+        "homebridge": ">1.1.7"
     },
-    "funding": {
-        "type": "paypal",
-        "url": "https://paypal.me/DeutscheMark/5"
-    },
-    "dependencies": {
-        "debug": "^4.1.1",
-        "rpc-websockets": "^5.1.1",
-        "r2": "^2.0.1",
-        "setinterval-plus": "^1.0.3"
-    },
-    "devDependencies": {},
-    "main": "index.js",
-    "directories": {
-        "lib": "lib"
-    },
+    "main": "dist/index.js",
     "scripts": {
+        "build": "rimraf ./dist && tsc",
+        "clean": "rimraf ./dist",
+        "prepublishOnly": "npm run build",
+        "postpublish": "npm run clean",
         "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "dependencies": {},
+    "devDependencies": {
+        "@types/node": "^14.14.22",
+        "@typescript-eslint/eslint-plugin": "^4.14.2",
+        "@typescript-eslint/parser": "^4.14.2",
+        "eslint": "^7.19.0",
+        "got": "^11.8.1",
+        "homebridge": "^1.1.7",
+        "node-persist": "^3.1.0",
+        "rimraf": "^3.0.2",
+        "rpc-websockets": "^7.4.8",
+        "setinterval-plus": "^1.0.3",
+        "ts-node": "^9.1.1",
+        "typescript": "^4.1.3"
     }
 }

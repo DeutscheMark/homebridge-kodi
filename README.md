@@ -171,7 +171,7 @@ Below is an example for all available parameters and accessories of this plugin.
 - `password` is the password set for the Kodi remote control, optional, default "kodi"
 - `polling` is the polling rate in seconds for updating all accessories when playing, optional, default 10
 - `retrytime` is the time in seconds to retry when the Kodi instance is stopped or not found, optional, default 30
-- `debug` enables logging for all events and status updates, default false
+- `debug` enables Logger for all events and status updates, default false
 - `television` > `controls` is a TV accessory for changing the current menu in Kodi, it also enables remote control in iOS/iPadOS for controlling the GUI, optional, default false
 - `television` > `controls` > `menuitems` is an array of menu items that can be opened in Kodi. See example config for all available menu items
 - `television` > `tv` is a TV accessory for watching TV in Kodi, it also enables remote control in iOS/iPadOS for controlling the GUI, optional, default false
@@ -210,7 +210,7 @@ Here is a list of all supported commands to date and how to use them:
 | *showcodec* | Show codec information of the playing item | |
 | *showosd* | Show the on-screen display for the current player | |
 | *sendtext* | Send a generic (unicode) text.<br>Just add the text you want to send, e.g. *"sendtext:Game of Thrones"* |
-| *executeaction* | Execute a specific action<br>Just add the action you want to perform, e.g. *"executeaction:smallstepback".*<br>You can find all the possible actions [here](https://kodi.wiki/view/JSON-RPC_API/v6#Input.Action) (Expand *JSON Schema Description* under *6.10.1*). |
+| *executeaction* | Execute a specific action<br>Just add the action you want to perform, e.g. *"executeaction:smallstepback".*<br>You can find all the possible actions [here](https://kodi.wiki/view/JSON-RPC_API/v12#Input.Action) (Expand *JSON Schema Description* under *6.10.1*). |
 
 ## Known Problems
 
