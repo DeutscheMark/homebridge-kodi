@@ -1,8 +1,10 @@
 # Changelog
 
-## 0.5.0
+## 1.0.0
 
-* Project converted to TypeScript. You shouldn't see any changes.
+* Project completely rewritten in TypeScript.
+* No changes need to be made in the config file.
+* TV accessories now need to be added as separate devices to support more than one remote control per homebridge instance and config.
 
 ## 0.4.0
 
