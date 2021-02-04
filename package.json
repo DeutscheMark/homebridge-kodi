@@ -1,7 +1,7 @@
 {
     "displayName": "Homebridge Kodi",
     "name": "homebridge-kodi",
-    "version": "1.0.0-beta.2",
+    "version": "1.0.0-beta.3",
     "description": "Homebridge plugin that provides details and controls for Kodi",
     "license": "MIT",
     "files": [
@@ -73,18 +73,19 @@
         "test": "echo \"Error: no test specified\" && exit 1"
     },
     "dependencies": {
-        "@types/node": "^14.14.22",
+        "got": "^11.8.1",
+        "node-persist": "^3.1.0",
+        "rpc-websockets": "^7.4.8",
+        "setinterval-plus": "^1.0.3"
+    },
+    "devDependencies": {
+        "@types/node": "^14.14.24",
         "@typescript-eslint/eslint-plugin": "^4.14.2",
         "@typescript-eslint/parser": "^4.14.2",
-        "eslint": "^7.19.0",
-        "got": "^11.8.1",
         "homebridge": "^1.1.7",
-        "node-persist": "^3.1.0",
+        "eslint": "^7.19.0",
         "rimraf": "^3.0.2",
-        "rpc-websockets": "^7.4.8",
-        "setinterval-plus": "^1.0.3",
         "ts-node": "^9.1.1",
         "typescript": "^4.1.3"
-    },
-    "devDependencies": {}
+    }
 }
