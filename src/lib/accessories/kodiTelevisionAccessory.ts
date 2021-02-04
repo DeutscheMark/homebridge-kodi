@@ -8,9 +8,9 @@ import {
     CharacteristicGetCallback,
 } from 'homebridge';
 
-import { KodiPlatform, KodiLogger, KodiTelevisionAccessory, TelevisionAccessoryType } from '../internal';
+import { KodiPlatform, KodiLogger, KodiTelevisionAccessory, TelevisionAccessoryType } from '../../internal';
 
-import kodi = require('./kodi');
+import kodi = require('../kodi');
 
 // =======================
 // = TelevisionAccessory =

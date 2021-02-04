@@ -7,9 +7,9 @@ import {
     CharacteristicSetCallback,
 } from 'homebridge';
 
-import { KodiPlatform, KodiLogger, KodiCommandAccessory } from '../internal';
+import { KodiPlatform, KodiLogger, KodiCommandAccessory } from '../../internal';
 
-import kodi = require('./kodi');
+import kodi = require('../kodi');
 
 // ==========================
 // = CommandSwitchAccessory =

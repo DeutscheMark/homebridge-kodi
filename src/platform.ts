@@ -22,7 +22,7 @@ import {
 } from './internal';
 
 import kodi = require('./lib/kodi');
-import Characteristics from './util/characteristics';
+import Characteristics from './lib/characteristics';
 
 import WebSockets = require('rpc-websockets');
 const WebSocket = WebSockets.Client;

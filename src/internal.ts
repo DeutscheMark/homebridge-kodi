@@ -1,14 +1,14 @@
-export * from './lib/kodiAccessory';
+export * from './lib/accessories/kodiAccessory';
 
-export * from './lib/kodiTelevisionAccessory';
-export * from './lib/kodiPlayerAccessory';
-export * from './lib/kodiApplicationAccessory';
-export * from './lib/kodiAudioLibraryAccessory';
-export * from './lib/kodiVideoLibraryAccessory';
-export * from './lib/kodiCommandAccessory';
+export * from './lib/accessories/kodiTelevisionAccessory';
+export * from './lib/accessories/kodiPlayerAccessory';
+export * from './lib/accessories/kodiApplicationAccessory';
+export * from './lib/accessories/kodiAudioLibraryAccessory';
+export * from './lib/accessories/kodiVideoLibraryAccessory';
+export * from './lib/accessories/kodiCommandAccessory';
 
 export * from './settings';
 
-export * from './logger';
+export * from './util/logger';
 
 export * from './platform';

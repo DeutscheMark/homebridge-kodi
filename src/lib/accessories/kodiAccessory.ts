@@ -1,6 +1,6 @@
 import { PlatformAccessory, PlatformConfig } from 'homebridge';
 
-import { KodiPlatform, KodiLogger } from '../internal';
+import { KodiPlatform, KodiLogger } from '../../internal';
 
 export abstract class KodiAccessory { }
 export abstract class KodiCommandAccessory { }

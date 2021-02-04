@@ -8,15 +8,15 @@ import {
     CharacteristicSetCallback,
 } from 'homebridge';
 
-import { KodiPlatform, KodiLogger, KodiAccessory } from '../internal';
+import { KodiPlatform, KodiLogger, KodiAccessory } from '../../internal';
 
-import kodi = require('./kodi');
+import kodi = require('../kodi');
 
 // ===================================
-// = VideoLibraryScanSwitchAccessory =
+// = AudioLibraryScanSwitchAccessory =
 // ===================================
 
-export class VideoLibraryScanSwitchAccessory extends KodiAccessory {
+export class AudioLibraryScanSwitchAccessory extends KodiAccessory {
 
     private switchService: Service;
 
@@ -29,7 +29,7 @@ export class VideoLibraryScanSwitchAccessory extends KodiAccessory {
         public readonly version: string,
     ) {
         super();
-        this.log.info('Adding VideoLibraryScanSwitchAccessory');
+        this.log.info('Adding AudioLibraryScanSwitchAccessory');
 
         this.accessory.getService(this.platform.Service.AccessoryInformation)!
             .setCharacteristic(this.platform.Characteristic.Name, name)
@@ -57,7 +57,7 @@ export class VideoLibraryScanSwitchAccessory extends KodiAccessory {
     setOn(on: CharacteristicValue, callback: CharacteristicSetCallback) {
         this.log.debug('Setting ' + this.name + ': ' + on);
         if (on) {
-            kodi.getActionResult(this.config, this.log, 'VideoLibrary.Scan', { 'showdialogs': true }, (error, ok) => {
+            kodi.getActionResult(this.config, this.log, 'AudioLibrary.Scan', { 'showdialogs': true }, (error, ok) => {
                 if (!error && ok) {
                     kodi.storageSetItem(this.platform.api.user.persistPath(), this.name, 'true', () => {
                         callback(null);
@@ -70,6 +70,7 @@ export class VideoLibraryScanSwitchAccessory extends KodiAccessory {
                     kodi.storageSetItem(this.platform.api.user.persistPath(), this.name, 'false', () => {
                         callback(error);
                     });
+                    
                 }
             });
         } else {
@@ -82,10 +83,10 @@ export class VideoLibraryScanSwitchAccessory extends KodiAccessory {
 }
 
 // ===================================
-// = VideoLibraryCleanSwitchAccessory =
+// = AudioLibraryCleanSwitchAccessory =
 // ===================================
 
-export class VideoLibraryCleanSwitchAccessory extends KodiAccessory {
+export class AudioLibraryCleanSwitchAccessory extends KodiAccessory {
 
     private switchService: Service;
 
@@ -98,10 +99,9 @@ export class VideoLibraryCleanSwitchAccessory extends KodiAccessory {
         public readonly version: string,
     ) {
         super();
-        this.log.info('Adding VideoLibraryCleanSwitchAccessory');
+        this.log.info('Adding AudioLibraryCleanSwitchAccessory');
 
         this.accessory.getService(this.platform.Service.AccessoryInformation)!
-            .setCharacteristic(this.platform.Characteristic.Name, name)
             .setCharacteristic(this.platform.Characteristic.Manufacturer, 'github.com DeutscheMark')
             .setCharacteristic(this.platform.Characteristic.Model, 'Homebridge-Kodi ApplicationVolumeLightbulb')
             .setCharacteristic(this.platform.Characteristic.SerialNumber, this.platform.api.hap.uuid.generate(name))
@@ -126,7 +126,7 @@ export class VideoLibraryCleanSwitchAccessory extends KodiAccessory {
     setOn(on: CharacteristicValue, callback: CharacteristicSetCallback) {
         this.log.debug('Setting ' + this.name + ': ' + on);
         if (on) {
-            kodi.getActionResult(this.config, this.log, 'VideoLibrary.Clean', { 'showdialogs': true }, (error, ok) => {
+            kodi.getActionResult(this.config, this.log, 'AudioLibrary.Clean', { 'showdialogs': true }, (error, ok) => {
                 if (!error && ok) {
                     kodi.storageSetItem(this.platform.api.user.persistPath(), this.name, 'true', () => {
                         callback(null);
