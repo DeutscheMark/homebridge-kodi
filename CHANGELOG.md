@@ -2,7 +2,10 @@
 
 ## 1.0.0
 
-* Project completely rewritten in TypeScript.
+**ATTENTION - ALL ACCESSORIES WILL BE RESET!**
+
+* The plugin was completely rewritten in TypeScript.
+* Attention: This is now a dynamic plugin so unfortunately all accessories will be reset upon start!
 * No changes need to be made in the config file.
 * TV accessories now need to be added as separate devices to support more than one remote control per homebridge instance and config.
 
