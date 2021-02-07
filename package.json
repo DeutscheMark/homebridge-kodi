@@ -1,13 +1,16 @@
 {
     "displayName": "Homebridge Kodi",
     "name": "homebridge-kodi",
-    "version": "1.0.0-beta.3",
-    "description": "Homebridge plugin that provides details and controls for Kodi",
+    "version": "1.0.0-beta.4",
+    "description": "Kodi plugin for Homebridge",
     "license": "MIT",
     "files": [
         "LICENSE",
-        "dist",
-        "config.schema.json"
+        "dist/**/*",
+        "package.json",
+        "config.schema.json",
+        "README.md",
+        "CHANGELOG.md"
     ],
     "homepage": "https://github.com/DeutscheMark/homebridge-kodi#readme",
     "repository": {
@@ -22,10 +25,16 @@
         "email": "deutschemark88@gmail.com",
         "url": "https://github.com/DeutscheMark"
     },
-    "funding": {
-        "type": "paypal",
-        "url": "https://paypal.me/DeutscheMark/5"
-    },
+    "funding": [
+        {
+            "type": "github",
+            "url": "https://github.com/sponsors/DeutscheMark/"
+        },
+        {
+            "type": "paypal",
+            "url": "https://paypal.me/DeutscheMark/5"
+        }
+    ],
     "keywords": [
         "homebridge",
         "homebridge-plugin",
@@ -79,7 +88,7 @@
         "setinterval-plus": "^1.0.3"
     },
     "devDependencies": {
-        "@types/node": "^14.14.24",
+        "@types/node": "^14.14.25",
         "@typescript-eslint/eslint-plugin": "^4.14.2",
         "@typescript-eslint/parser": "^4.14.2",
         "homebridge": "^1.1.7",

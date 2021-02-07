@@ -11,7 +11,7 @@
 ![npm](https://img.shields.io/npm/v/homebridge-kodi?color=green&style=flat-square)
 ![npm](https://img.shields.io/npm/dw/homebridge-kodi?color=success&style=flat-square)
 ![npm](https://img.shields.io/npm/dt/homebridge-kodi?color=success&style=flat-square)
-[![PayPal](https://img.shields.io/badge/Donate-PayPal-blue?style=flat-square)](https://www.paypal.me/DeutscheMark/5.00)
+[![PayPal](https://img.shields.io/badge/Donate-PayPal-blue?style=flat-square)](https://www.paypal.me/DeutscheMark/5)
 
 ![Kodi](https://img.shields.io/badge/Minimum%20Kodi%20Version-12.0%20(Frodo)-orange?style=flat-square)
 ![Kodi](https://img.shields.io/badge/Latest%20Kodi%20Version-19.0%20(Matrix)-yellow?style=flat-square)
@@ -214,8 +214,8 @@ Here is a list of all supported commands to date and how to use them:
 
 ## Known Problems
 
-- Multiple running Kodis in one homebridge instance are not supported: In this early stage of development you can't use multipe running Kodis in a single homebridge instance. So please only configure one platform for homebridge-kodi per homebridge instance.
-- Library scan & clean: The current scan/clean status is not displayed in HomeKit. Also it does not abort the scanning/cleaning when currently scanning/cleaning and setting the switch to off. The API is missing this feature unfortunately.
+- This plugin is a dynamic platform so please only add one platform of Homebridge-Kodi per instance and config. As of right now it only supports one running Kodi instance. This feature might be added in a future update.
+- Library scan & clean: Though the current scan/clean status is displayed and saved in HomeKit, it can't get the current status from Kodi. It can only get status changes (when this plugin and Kodi are running at the same time). So there's no guarantee it always shows the right status. Also the switches cannot abort the currently running scan/clean when setting them to off. The API is missing some of those features unfortunately but it should still work pretty well.
 - Only internal players are supported right now.
 
 ## Contributors
