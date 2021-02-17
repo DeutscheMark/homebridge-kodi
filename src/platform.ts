@@ -32,8 +32,6 @@ const WebSocket = WebSockets.Client;
 import setIntervalPlus = require('setinterval-plus');
 /* eslint-enable */
 
-//import CustomCharacteristic = require('./util/characteristics2');
-
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const packageJSON = require('../package.json');
 
@@ -93,7 +91,7 @@ export class KodiPlatform implements DynamicPlatformPlugin {
     discoverDevices() {
         this.log.info('Init Homebridge-Kodi');
 
-        const platformname = this.config.name && this.config.name.length !== 0 || 'Kodi';
+        const platformname = (this.config.name && this.config.name.length !== 0) ? this.config.name :'Kodi';
         const polling = this.config.polling || 10;
         const retrytime = this.config.retrytime || 30;
         const tvConfig = this.config.television && this.config.television.controls || false;
@@ -248,7 +246,7 @@ export class KodiPlatform implements DynamicPlatformPlugin {
 
         // Remove all other not anymore shown accessories from cache
 
-        this.removeAllAccessoriesNotShown.bind(this);
+        this.removeAllAccessoriesNotNeededAnymore();
 
         // Kodi Version
 
@@ -364,8 +362,6 @@ export class KodiPlatform implements DynamicPlatformPlugin {
         return accessory;
     }
 
-    s
-
     getAccessory(name: string): PlatformAccessory | undefined {
         const uuid = this.api.hap.uuid.generate(name);
         const existingAccessory = this.accessories.find(accessory => accessory.UUID === uuid);
@@ -375,7 +371,8 @@ export class KodiPlatform implements DynamicPlatformPlugin {
         return undefined;
     }
 
-    removeAllAccessoriesNotShown() {
+    removeAllAccessoriesNotNeededAnymore() {
+        this.log.debug('Remove all accessories not needed anymore.');
         for (let index = 0; index < this.accessories.length; index++) {
             const accessory = this.accessories[index];
             const shownAccessory = this.shownAccessories.find(i => i.displayName === accessory.displayName);
