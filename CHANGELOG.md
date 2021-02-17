@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.0
+## 1.0.1
 
 **ATTENTION - ALL ACCESSORIES WILL BE RESET!**
 
