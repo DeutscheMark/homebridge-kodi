@@ -37,18 +37,18 @@ Feel free to leave any feedback or suggested features [here](https://github.com/
 
 In order to use this plugin you have to enable **Allow remote control via HTTP** in Kodi first.
 
-You can find a detailed tutorial on how to enable remote access in Kodi [here](https://www.addictivetips.com/media-streaming/kodi/control-kodi-internet-web-interface/).
+You can find a detailed tutorial on how to enable the Kodi *remote control via HTTP* [here](https://www.addictivetips.com/media-streaming/kodi/control-kodi-internet-web-interface/).
 
 ## Installation
 
 1. Install homebridge using: `npm install -g homebridge`.
 2. Install this plugin using: `npm install -g homebridge-kodi`.
-3. Allow remote control via HTTP in Kodi.
+3. Allow *remote control via HTTP* in Kodi.
 4. Update your configuration file. See the example below.
 
 ## Configuration
 
-By default a lightbulb accessory for controlling the current playback (on/off for Play/Pause and brightness for Seek) and getting information (e.g. in Eve) of the current playing item is exposed. This is the main accessory of this plugin but you can enable additional accessories in your config.
+By default a lightbulb accessory for controlling the current playback (on/off for Play/Pause and brightness for Seek) and getting information (e.g. in Eve) of the current playing item is exposed. This is the main accessory of this plugin but you can enable additional accessories in the config.
 
 ### Example Config
 
@@ -164,31 +164,31 @@ Below is an example for all available parameters and accessories of this plugin.
 
 ### Settings
 
-- `name` is the name of the Kodi instance, optional, default "Kodi"
-- `host` is the IP address or hostname of the Kodi instance, optional, default "localhost"
-- `port` is the port set for the Kodi remote control, optional, default "8080"
-- `username` is the username set for the Kodi remote control, optional, default "kodi"
-- `password` is the password set for the Kodi remote control, optional, default "kodi"
-- `polling` is the polling rate in seconds for updating all accessories when playing, optional, default 10
-- `retrytime` is the time in seconds to retry when the Kodi instance is stopped or not found, optional, default 30
-- `debug` enables Logger for all events and status updates, default false
-- `television` > `controls` is a TV accessory for changing the current menu in Kodi, it also enables remote control in iOS/iPadOS for controlling the GUI, optional, default false
+- `name` is the name of the prefix that is used for all accessories, **optional**, **default "Kodi"**
+- `host` is the IP address or hostname of the Kodi instance, **optional**, **default "localhost"**
+- `port` is the port set for the Kodi *remote control via HTTP*, **optional**, **default "8080"**
+- `username` is the username set for the Kodi *remote control via HTTP*, **optional**, **default "kodi"**
+- `password` is the password set for the Kodi *remote control via HTTP*, **optional**, **default "kodi"**
+- `polling` is the polling rate in seconds for updating all accessories when playing, **optional**, **default 10**
+- `retrytime` is the time in seconds to retry when Kodi is stopped or not found, **optional**, **default 30**
+- `debug` enables Logger for all events and status updates, **optional**, **default false**
+- `television` > `controls` is a TV accessory for changing the current menu in Kodi, is automatically active when Kodi is running and also enables remote control in iOS/iPadOS for controlling the Kodi GUI, **optional**, **default false**
 - `television` > `controls` > `menuitems` is an array of menu items that can be opened in Kodi. See example config for all available menu items
-- `television` > `tv` is a TV accessory for watching TV in Kodi, it also enables remote control in iOS/iPadOS for controlling the GUI, optional, default false
+- `television` > `tv` is a TV accessory for watching TV in Kodi, is active when a TV channel is playing and also enables remote control in iOS/iPadOS for controlling the Kodi GUI, **optional**, **default false**
 - `television` > `tv` > `channels` is an array of TV channels that can be switched to in Kodi. Channel names must be exactly the same as in Kodi for them to work
-- `player` > `main` is the main lightbulb accessory of this plugin for controlling the playback in Kodi, shows extra information of the playing item in Eve, optional, default true
-- `player` > `play` is an alternative switch for controlling the playback in Kodi, optional, default false
-- `player` > `pause` is a switch for pausing the current playback in Kodi, optional, default false
-- `player` > `stop` is a switch for stopping the current playback in Kodi, optional, default false
-- `application` > `volume` is a light bulb for controlling the volume in Kodi and controlling the current volume via a brightness slider, optional, default false
-- `videolibrary` > `scan` is a switch for starting a scanning of the video library in Kodi, optional, default false
-- `videolibrary` > `clean` is a switch for starting a cleaning of the video library in Kodi, optional, default false
-- `audiolibrary` > `scan` is a switch for starting a scanning of the audio library in Kodi, optional, default false
-- `audiolibrary` > `clean` is a switch for starting a cleaning of the audio library in Kodi, optional, default false
-- `commands` is a list of switches for user defined sequences of commands sent to Kodi
+- `player` > `main` is the main lightbulb accessory of this plugin for controlling the playback in Kodi, shows extra information of the playing item in Eve, **optional**, **default true**
+- `player` > `play` is an alternative switch for controlling the playback in Kodi, **optional**, **default false**
+- `player` > `pause` is a switch for pausing the current playback in Kodi, **optional**, **default false**
+- `player` > `stop` is a switch for stopping the current playback in Kodi, **optional**, **default false**
+- `application` > `volume` is a light bulb for controlling the volume in Kodi and controlling the current volume via a brightness slider, **optional**, **default false**
+- `videolibrary` > `scan` is a switch for starting a video library scan in Kodi, **optional**, **default false**
+- `videolibrary` > `clean` is a switch for starting a video library clean in Kodi, **optional**, **default false**
+- `audiolibrary` > `scan` is a switch for starting a audio library scan in Kodi, **optional**, **default false**
+- `audiolibrary` > `clean` is a switch for starting a audio library clean in Kodi, **optional**, **default false**
+- `commands` is a list of switches for user defined sequences of commands sent to Kodi, **optional**
 - `commands` > `name` is the name of the switch for the user defined sequence of commands
-- `commands` > `interval` is the number of milliseconds between each command to wait, optional, default 500
-- `commands` > `sequence` is the sequence of commands sent to Kodi as array, see supported commands below
+- `commands` > `interval` is the number of milliseconds between each command to wait, **optional**, **default 500**
+- `commands` > `sequence` is the sequence of commands sent to Kodi as list, see supported commands below
 
 ## Supported Commands
 
@@ -215,6 +215,7 @@ Here is a list of all supported commands to date and how to use them:
 ## Known Problems
 
 - This plugin is a dynamic platform so please only add one platform of Homebridge-Kodi per instance and config. As of right now it only supports one running Kodi instance. This feature might be added in a future update.
+- When renaming or adding a input (a control or a channel) to a TV accessory or changing the "name" you should delete the TV accessory first or you might see the input as a new accessory inside the TV accessory.
 - Library scan & clean: Though the current scan/clean status is displayed and saved in HomeKit, it can't get the current status from Kodi. It can only get status changes (when this plugin and Kodi are running at the same time). So there's no guarantee it always shows the right status. Also the switches cannot abort the currently running scan/clean when setting them to off. The API is missing some of those features unfortunately but it should still work pretty well.
 - Only internal players are supported right now.
 
@@ -229,5 +230,5 @@ Many thanks go to
 
 ## Attribution
 
-- Powered by [Kodi](https://kodi.tv)
+- Powered by [Homebridge](https://homebridge.io) and [Kodi](https://kodi.tv).
 
