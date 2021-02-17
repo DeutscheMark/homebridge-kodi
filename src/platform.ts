@@ -47,6 +47,7 @@ export class KodiPlatform implements DynamicPlatformPlugin {
     };
 
     public readonly accessories: PlatformAccessory[] = [];
+    public readonly shownAccessories: PlatformAccessory[] = [];
 
     public intervalSubscriptionsKodiPlayer: setIntervalPlus;
     public intervalUpdateKodiPlayer: setIntervalPlus;
@@ -92,7 +93,7 @@ export class KodiPlatform implements DynamicPlatformPlugin {
     discoverDevices() {
         this.log.info('Init Homebridge-Kodi');
 
-        const platformname = this.config.name || 'Kodi';
+        const platformname = this.config.name && this.config.name.length !== 0 || 'Kodi';
         const polling = this.config.polling || 10;
         const retrytime = this.config.retrytime || 30;
         const tvConfig = this.config.television && this.config.television.controls || false;
@@ -245,6 +246,10 @@ export class KodiPlatform implements DynamicPlatformPlugin {
             }
         }
 
+        // Remove all other not anymore shown accessories from cache
+
+        this.removeAllAccessoriesNotShown.bind(this);
+
         // Kodi Version
 
         kodi.applicationGetProperties(this.config, this.log, ['version'], (error, result) => {
@@ -311,12 +316,14 @@ export class KodiPlatform implements DynamicPlatformPlugin {
             if (existingAccessory) {
                 this.log.debug('Restoring existing accessory from cache: ' + existingAccessory.displayName);
                 new KodiAccessory(this, existingAccessory, this.log, this.config, name, packageJSON.version);
+                this.shownAccessories.push(existingAccessory);
                 return existingAccessory;
             } else {
                 this.log.debug('Adding new accessory:' + name);
                 const accessory = new this.api.platformAccessory(name, uuid);
-                this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
                 new KodiAccessory(this, accessory, this.log, this.config, name, packageJSON.version);
+                this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+                this.shownAccessories.push(accessory);
                 return accessory;
             }
         }
@@ -330,11 +337,13 @@ export class KodiPlatform implements DynamicPlatformPlugin {
         if (existingAccessory) {
             this.log.debug('Restoring existing accessory from cache: ' + existingAccessory.displayName);
             new KodiCommandAccessory(this, existingAccessory, this.log, this.config, name, packageJSON.version, interval, sequence);
+            this.shownAccessories.push(existingAccessory);
         } else {
             this.log.debug('Adding new accessory: ' + name);
             const accessory = new this.api.platformAccessory(name, uuid);
             new KodiCommandAccessory(this, accessory, this.log, this.config, name, packageJSON.version, interval, sequence);
             this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+            this.shownAccessories.push(accessory);
         }
     }
 
@@ -347,20 +356,15 @@ export class KodiPlatform implements DynamicPlatformPlugin {
     ): PlatformAccessory | undefined {
         this.log.info('Adding ' + name);
         const uuid = this.api.hap.uuid.generate(name);
-        const existingAccessory = this.accessories.find(accessory => accessory.UUID === uuid);
-
-        if (existingAccessory) {
-            this.log.debug('Restoring existing accessory from cache: ' + existingAccessory.displayName);
-            new KodiTelevisionAccessory(this, existingAccessory, this.log, this.config, name, packageJSON.version, type, inputNames, inputIdentifiers);
-            return existingAccessory;
-        } else {
-            this.log.debug('Adding new accessory: ' + name);
-            const accessory = new this.api.platformAccessory(name, uuid, this.api.hap.Categories.TELEVISION);
-            new KodiTelevisionAccessory(this, accessory, this.log, this.config, name, packageJSON.version, type, inputNames, inputIdentifiers);
-            this.api.publishExternalAccessories(PLUGIN_NAME, [accessory]);
-            return accessory;
-        }
+        this.log.debug('Adding new accessory: ' + name);
+        const accessory = new this.api.platformAccessory(name, uuid, this.api.hap.Categories.TELEVISION);
+        new KodiTelevisionAccessory(this, accessory, this.log, this.config, name, packageJSON.version, type, inputNames, inputIdentifiers);
+        this.api.publishExternalAccessories(PLUGIN_NAME, [accessory]);
+        this.shownAccessories.push(accessory);
+        return accessory;
     }
+
+    s
 
     getAccessory(name: string): PlatformAccessory | undefined {
         const uuid = this.api.hap.uuid.generate(name);
@@ -369,6 +373,17 @@ export class KodiPlatform implements DynamicPlatformPlugin {
             return existingAccessory;
         }
         return undefined;
+    }
+
+    removeAllAccessoriesNotShown() {
+        for (let index = 0; index < this.accessories.length; index++) {
+            const accessory = this.accessories[index];
+            const shownAccessory = this.shownAccessories.find(i => i.displayName === accessory.displayName);
+            if (!shownAccessory) {
+                this.log.debug('Removing existing accessory from cache: ' + accessory.displayName);
+                this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+            }
+        }
     }
 
     kodiNotificationsSubscription = async function (this: KodiPlatform, api: API) {
@@ -626,9 +641,9 @@ export class KodiPlatform implements DynamicPlatformPlugin {
                                 }
                             }
                         }
-                        const album = itemresult.item.album !== '' ? itemresult.item.album : '-';
-                        const itemtype = itemresult.item.type !== '' ? itemresult.item.type : '-';
-                        const title = itemresult.item.label !== '' ? itemresult.item.label : '-';
+                        const album = typeof itemresult.item.album !== 'undefined' && itemresult.item.album !== '' ? itemresult.item.album : '-';
+                        const itemtype = typeof itemresult.item.type !== 'undefined' && itemresult.item.type !== '' ? itemresult.item.type : '-';
+                        const title = typeof itemresult.item.label !== 'undefined' && itemresult.item.label !== '' ? itemresult.item.label : '-';
                         const showtitle = typeof itemresult.item.showtitle !== 'undefined' && itemresult.item.showtitle !== '' ? itemresult.item.showtitle : '-';
                         let seasonEpisode = '-';
                         if (itemtype === 'episode') {

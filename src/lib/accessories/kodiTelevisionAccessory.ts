@@ -223,11 +223,12 @@ export class TelevisionAccessory extends KodiTelevisionAccessory {
 
         this.televisionService.addLinkedService(televisionSpeakerService);
 
+        const shownInputServices: Service[] = [];
         for (let index = 0; index < inputNames.length; index++) {
             const inputName = inputNames[index];
             const inputIdentifier = inputIdentifiers[index];
 
-            this.log.info('Adding Television' + type + ' - ' + 'Input' + name + inputName);
+            this.log.info('Adding Television' + type + ' - ' + 'Input' + name + ' ' + inputName);
 
             const subType = 'Input' + inputName;
             let inputService = this.accessory.getServiceById(name, subType);
@@ -236,10 +237,10 @@ export class TelevisionAccessory extends KodiTelevisionAccessory {
                 this.log.debug('Adding new accessory: ' + 'Input' + inputName);
                 inputService = new this.platform.api.hap.Service.InputSource(name, subType);
                 inputService.subtype = subType;
-                this.accessory.addService(inputService);
             }
 
             inputService
+                .setCharacteristic(this.platform.api.hap.Characteristic.Name, inputName)
                 .setCharacteristic(this.platform.api.hap.Characteristic.ConfiguredName, inputName)
                 .setCharacteristic(this.platform.api.hap.Characteristic.Identifier, inputIdentifier)
                 .setCharacteristic(this.platform.api.hap.Characteristic.IsConfigured, this.platform.api.hap.Characteristic.IsConfigured.CONFIGURED)
@@ -247,7 +248,20 @@ export class TelevisionAccessory extends KodiTelevisionAccessory {
                 .setCharacteristic(this.platform.api.hap.Characteristic.TargetVisibilityState, this.platform.api.hap.Characteristic.TargetVisibilityState.SHOWN)
                 .setCharacteristic(this.platform.api.hap.Characteristic.CurrentVisibilityState, this.platform.api.hap.Characteristic.CurrentVisibilityState.SHOWN);
 
+            this.accessory.addService(inputService);
             this.televisionService.addLinkedService(inputService);
+            shownInputServices.push(inputService);
+        }
+
+        for (let index = 0; index < this.televisionService.linkedServices.length; index++) {
+            const service = this.televisionService.linkedServices[index];
+            const name = service.getCharacteristic(this.platform.api.hap.Characteristic.Name).getValue();
+            const shownInputService = shownInputServices.find(i => i.getCharacteristic(this.platform.api.hap.Characteristic.Name).getValue() === name);
+            if (!shownInputService) {
+                this.log.debug('Removing accessory and linked service from television service: ' + this.televisionService.name + ' ' + name);
+                this.televisionService.removeLinkedService(service);
+                this.accessory.removeService(service);
+            }
         }
 
         this.accessory.addService(this.televisionService);
@@ -306,7 +320,7 @@ export class TelevisionAccessory extends KodiTelevisionAccessory {
                                     if (channel.label ===
                                         this.inputNames[(this.televisionService.getCharacteristic(this.platform.api.hap.Characteristic.ActiveIdentifier).value as number) - 1]) {
                                         channeltostart = channel;
-                                        
+
                                     }
                                 }
                                 if (channeltostart) {
