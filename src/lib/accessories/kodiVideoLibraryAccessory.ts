@@ -34,7 +34,7 @@ export class VideoLibraryScanSwitchAccessory extends KodiAccessory {
         this.accessory.getService(this.platform.Service.AccessoryInformation)!
             .setCharacteristic(this.platform.Characteristic.Name, name)
             .setCharacteristic(this.platform.Characteristic.Manufacturer, 'github.com DeutscheMark')
-            .setCharacteristic(this.platform.Characteristic.Model, 'Homebridge-Kodi ApplicationVolumeLightbulb')
+            .setCharacteristic(this.platform.Characteristic.Model, 'Homebridge-Kodi VideoLibraryScanSwitch')
             .setCharacteristic(this.platform.Characteristic.SerialNumber, this.platform.api.hap.uuid.generate(name))
             .setCharacteristic(this.platform.Characteristic.FirmwareRevision, version);
 
@@ -103,7 +103,7 @@ export class VideoLibraryCleanSwitchAccessory extends KodiAccessory {
         this.accessory.getService(this.platform.Service.AccessoryInformation)!
             .setCharacteristic(this.platform.Characteristic.Name, name)
             .setCharacteristic(this.platform.Characteristic.Manufacturer, 'github.com DeutscheMark')
-            .setCharacteristic(this.platform.Characteristic.Model, 'Homebridge-Kodi ApplicationVolumeLightbulb')
+            .setCharacteristic(this.platform.Characteristic.Model, 'Homebridge-Kodi VideoLibraryCleanSwitch')
             .setCharacteristic(this.platform.Characteristic.SerialNumber, this.platform.api.hap.uuid.generate(name))
             .setCharacteristic(this.platform.Characteristic.FirmwareRevision, version);
 

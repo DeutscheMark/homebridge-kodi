@@ -34,7 +34,7 @@ export class AudioLibraryScanSwitchAccessory extends KodiAccessory {
         this.accessory.getService(this.platform.Service.AccessoryInformation)!
             .setCharacteristic(this.platform.Characteristic.Name, name)
             .setCharacteristic(this.platform.Characteristic.Manufacturer, 'github.com DeutscheMark')
-            .setCharacteristic(this.platform.Characteristic.Model, 'Homebridge-Kodi ApplicationVolumeLightbulb')
+            .setCharacteristic(this.platform.Characteristic.Model, 'Homebridge-Kodi AudioLibraryScanSwitch')
             .setCharacteristic(this.platform.Characteristic.SerialNumber, this.platform.api.hap.uuid.generate(name))
             .setCharacteristic(this.platform.Characteristic.FirmwareRevision, version);
 
@@ -103,7 +103,7 @@ export class AudioLibraryCleanSwitchAccessory extends KodiAccessory {
 
         this.accessory.getService(this.platform.Service.AccessoryInformation)!
             .setCharacteristic(this.platform.Characteristic.Manufacturer, 'github.com DeutscheMark')
-            .setCharacteristic(this.platform.Characteristic.Model, 'Homebridge-Kodi ApplicationVolumeLightbulb')
+            .setCharacteristic(this.platform.Characteristic.Model, 'Homebridge-Kodi AudioLibraryCleanSwitch')
             .setCharacteristic(this.platform.Characteristic.SerialNumber, this.platform.api.hap.uuid.generate(name))
             .setCharacteristic(this.platform.Characteristic.FirmwareRevision, version);
 

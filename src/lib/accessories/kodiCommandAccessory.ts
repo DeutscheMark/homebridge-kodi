@@ -35,7 +35,7 @@ export class CommandSwitchAccessory extends KodiCommandAccessory {
         this.accessory.getService(this.platform.Service.AccessoryInformation)!
             .setCharacteristic(this.platform.Characteristic.Name, name)
             .setCharacteristic(this.platform.Characteristic.Manufacturer, 'github.com DeutscheMark')
-            .setCharacteristic(this.platform.Characteristic.Model, 'Homebridge-Kodi PlayerPlaySwitch')
+            .setCharacteristic(this.platform.Characteristic.Model, 'Homebridge-Kodi CommandSwitch')
             .setCharacteristic(this.platform.Characteristic.SerialNumber, this.platform.api.hap.uuid.generate(name))
             .setCharacteristic(this.platform.Characteristic.FirmwareRevision, version);
 
