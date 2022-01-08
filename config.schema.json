@@ -60,6 +60,28 @@
                 "description": "Enable debugging for the plugin.<br><em class='text-danger'>When enabled a lot of logs will be written depending on the polling and retry rate.</em>",
                 "default": false
             },
+            "power": {
+                "title": "Power On/Off",
+                "type": "object",
+                "properties": {
+                    "switch": {
+                        "title": "Power On/Off",
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Add a switch for starting/stopping the Kodi instance."
+                    },
+                    "on": {
+                        "title": "Power On Command",
+                        "type": "string",
+                        "description": "The shell command that will be used for the Power Switch and the TV Controls accessory to start the Kodi instance."
+                    },
+                    "off": {
+                        "title": "Power Off Command",
+                        "type": "string",
+                        "description": "The shell command that will be used for the Power Switch and the TV Controls accessory to stop the Kodi instance."
+                    }
+                }
+            },
             "television": {
                 "title": "TV Accessories",
                 "type": "object",
@@ -271,10 +293,22 @@
             ]
         },
         {
+            "title": "Power On/Off",
+            "type": "fieldset",
+            "expandable": true,
+            "expanded": false,
+            "items": [
+                "power.switch",
+                "power.on",
+                "power.off"
+            ]
+        },
+        {
             "title": "TV Controls",
             "type": "fieldset",
             "expandable": true,
             "expanded": false,
+            "nodescription": true,
             "items": [
                 {
                     "type": "help",

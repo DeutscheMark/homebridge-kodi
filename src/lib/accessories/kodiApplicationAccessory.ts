@@ -3,7 +3,6 @@ import {
     PlatformConfig,
     PlatformAccessory,
 } from 'homebridge';
-import { runInThisContext } from 'vm';
 
 import { KodiPlatform, KodiLogger, KodiAccessory } from '../../internal';
 

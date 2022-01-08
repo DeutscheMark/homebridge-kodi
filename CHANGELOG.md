@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.0
+
+* New `power` switch accessory. It shows the current availability of your Kodi instance. You can optionally set `on` and `off` commands for your shell to start and stop Kodi in Windows, macOS and Linux, please see README for some examples on how to do that. These commands will also be used for the TV Controls accessory.
+* With the new power capabilities all accessories now check if Kodi is running first and just reset their status to false if not, so they do only show possible errors only during the action the switches are performing.
+* The video and audio library scan switches now correctly reflect the status of a scan in Kodi. The video and audio clean switches continue to work as usual and use the status change notifications from Kodi to determine their status.
+* Use new `onGet` and `onSet` methods introduced with Homebridge v1.3.0.
+
 ## 1.0.1
 
 **ATTENTION - ALL ACCESSORIES WILL BE RESET!**
