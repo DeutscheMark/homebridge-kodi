@@ -2,11 +2,8 @@ import {
     Service,
     PlatformConfig,
     PlatformAccessory,
-    CharacteristicValue,
-    CharacteristicEventTypes,
-    CharacteristicSetCallback,
-    CharacteristicGetCallback,
 } from 'homebridge';
+import { runInThisContext } from 'vm';
 
 import { KodiPlatform, KodiLogger, KodiAccessory } from '../../internal';
 
@@ -44,62 +41,74 @@ export class ApplicationVolumeLightbulbAccessory extends KodiAccessory {
         this.lightbulbService.setCharacteristic(this.platform.Characteristic.Name, name);
 
         this.lightbulbService.getCharacteristic(this.platform.Characteristic.On)
-            .on(CharacteristicEventTypes.GET, this.getOn.bind(this))
-            .on(CharacteristicEventTypes.SET, this.setOn.bind(this));
+            .onGet(async () => {
+                return kodi.applicationGetProperties(this.config, ['muted'])
+                    .then(result => {
+                        if (result) {
+                            const muted = result.muted ? result.muted : false;
+                            this.log.debug('Getting ' + this.name + ': ' + !muted);
+                            return !muted;
+                        } else {
+                            return false;
+                        }
+                    })
+                    .catch(error => {
+                        this.log.error('Getting ' + this.name + ' - Error: ' + error.message);
+                        return false;
+                    });
+            })
+            .onSet(async (on) => {
+                kodi.applicationSetMute(this.config, !on)
+                    .then(result => {
+                        this.log.debug('Setting ' + this.name + ': ' + result);
+                    })
+                    .catch(error => {
+                        this.log.debug('Setting ' + this.name + ' - Error: ' + error.message);
+                    });
+            });
 
         this.lightbulbService.getCharacteristic(this.platform.Characteristic.Brightness)
-            .on(CharacteristicEventTypes.GET, this.getBrightness.bind(this))
-            .on(CharacteristicEventTypes.SET, this.setBrightness.bind(this));
-    }
-
-    getOn(callback: CharacteristicGetCallback) {
-        kodi.applicationGetProperties(this.config, this.log, ['muted'], (error, result) => {
-            if (!error && result) {
-                const muted = result.muted ? result.muted : false;
-                this.log.debug('Getting ' + this.name + ': ' + !muted);
-                callback(null, !muted);
-            } else {
-                callback(null, false);
-            }
-        });
-    }
-
-    setOn(on: CharacteristicValue, callback: CharacteristicSetCallback) {
-        kodi.applicationSetMute(this.config, this.log, !on, (error, result) => {
-            if (!error) {
-                this.log.debug('Setting ' + this.name + ': ' + result);
-            }
-            callback(error);
-        });
-    }
-
-    getBrightness(callback: CharacteristicGetCallback) {
-        kodi.applicationGetProperties(this.config, this.log, ['volume'], (error, result) => {
-            if (!error && result) {
-                const volume = result.volume ? result.volume : 0;
-                this.log.debug('Getting ' + this.name + ': ' + volume + ' %');
-                callback(null, volume);
-            } else {
-                callback(error, 0);
-            }
-        });
-    }
-
-    setBrightness(brightness: CharacteristicValue, callback: CharacteristicSetCallback) {
-        const volume = Math.round(brightness as number);
-        kodi.applicationSetMute(this.config, this.log, volume === 0, (error, result) => {
-            if (!error) {
-                this.log.debug('Setting ' + this.name + '-Mute: ' + result);
-                kodi.applicationSetVolume(this.config, this.log, volume, (error, result) => {
-                    if (!error && result) {
-                        this.log.debug('Setting ' + this.name + ': ' + result + ' %');
-                    }
-                    callback(error);
-                });
-            } else {
-                callback(error);
-            }
-        });
+            .onGet(async () => {
+                return kodi.applicationGetProperties(this.config, ['volume'])
+                    .then(result => {
+                        if (result) {
+                            const volume = result.volume ? result.volume : 0;
+                            this.log.debug('Getting ' + this.name + ': ' + volume + ' %');
+                            return volume;
+                        } else {
+                            return 0;
+                        }
+                    })
+                    .catch(error => {
+                        this.log.debug('Getting ' + this.name + ' - Error: ' + error.message);
+                        return 0;
+                    });
+            })
+            .onSet(async (brightness) => {
+                const volume = Math.round(brightness as number);
+                kodi.applicationSetMute(this.config, volume === 0)
+                    .then(muteresult => {
+                        if (muteresult !== null) {
+                            this.log.debug('Setting ' + this.name + ' Mute: ' + muteresult);
+                            kodi.applicationSetVolume(this.config, volume)
+                                .then(volumeresult => {
+                                    if (volumeresult) {
+                                        this.log.debug('Setting ' + this.name + ': ' + volumeresult + ' %');
+                                    } else {
+                                        this.log.debug('Setting ' + this.name + ': (no result)');
+                                    }
+                                })
+                                .catch(error => {
+                                    this.log.error('Setting ' + this.name + ': ' + muteresult + ' % - Error: ' + error.message);
+                                });
+                        } else {
+                            this.log.debug('Setting ' + this.name + ': ' + muteresult + ' % (no result)');
+                        }
+                    })
+                    .catch(error => {
+                        this.log.error('Setting ' + this.name + ' - Error: ' + error.message);
+                    });
+            });
     }
 
 }

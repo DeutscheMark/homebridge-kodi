@@ -1,5 +1,6 @@
 export * from './lib/accessories/kodiAccessory';
 
+export * from './lib/accessories/kodiPowerAccessory';
 export * from './lib/accessories/kodiTelevisionAccessory';
 export * from './lib/accessories/kodiPlayerAccessory';
 export * from './lib/accessories/kodiApplicationAccessory';

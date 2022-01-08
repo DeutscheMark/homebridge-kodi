@@ -2,9 +2,6 @@ import {
     Service,
     PlatformConfig,
     PlatformAccessory,
-    CharacteristicEventTypes,
-    CharacteristicValue,
-    CharacteristicSetCallback,
 } from 'homebridge';
 
 import { KodiPlatform, KodiLogger, KodiCommandAccessory } from '../../internal';
@@ -45,42 +42,42 @@ export class CommandSwitchAccessory extends KodiCommandAccessory {
         this.switchService.setCharacteristic(this.platform.Characteristic.Name, name);
 
         this.switchService.getCharacteristic(this.platform.Characteristic.On)
-            .updateValue(false)
-            .on(CharacteristicEventTypes.SET, this.setOn.bind(this));
-    }
-
-    setOn(on: CharacteristicValue, callback: CharacteristicSetCallback) {
-        this.log.debug('Setting ' + this.name + ': ' + on);
-        if (on) {
-            for (let index = 0; index < this.sequence.length; index++) {
-                const commandarr = this.sequence[index].split(':');
-                const command = commandarr[0];
-                const params = commandarr[1];
-                const intervalValue = this.interval || 500;
-                setTimeout(() => {
-                    kodi.input(this.config, this.log, command, params, (error, result) => {
-                        if (!error && result) {
-                            this.log.info(this.name + ': "' + this.sequence[index] + '" command sent.');
-                            if (index === this.sequence.length - 1) {
-                                setTimeout(() => {
-                                    this.log.info(this.name + ': Command sequence successfully sent.');
-                                    this.switchService.getCharacteristic(this.platform.api.hap.Characteristic.On).updateValue(false);
-                                }, 100);
-                                callback();
-                            }
-                        } else if (index === this.sequence.length - 1) {
-                            setTimeout(() => {
-                                this.log.info(this.name + ': Command sequence successfully sent.');
-                                this.switchService.getCharacteristic(this.platform.api.hap.Characteristic.On).updateValue(false);
-                            }, 100);
-                            callback();
-                        }
-                    });
-                }, intervalValue * index);
-            }
-        } else {
-            callback();
-        }
+            .onGet(async () => {
+                return false;
+            })
+            .onSet(async (on) => {
+                this.log.debug('Setting ' + this.name + ': ' + on);
+                if (on) {
+                    for (let index = 0; index < this.sequence.length; index++) {
+                        const commandarr = this.sequence[index].split(':');
+                        const command = commandarr[0];
+                        const params = commandarr[1];
+                        const intervalValue = this.interval || 500;
+                        setTimeout(() => {
+                            kodi.input(this.config, command, params)
+                                .then(result => {
+                                    if (result) {
+                                        this.log.info(this.name + ': "' + this.sequence[index] + '" command sent.');
+                                        if (index === this.sequence.length - 1) {
+                                            setTimeout(() => {
+                                                this.log.info(this.name + ': Command sequence successfully sent.');
+                                                this.switchService.getCharacteristic(this.platform.api.hap.Characteristic.On).updateValue(false);
+                                            }, 100);
+                                        }
+                                    } else if (index === this.sequence.length - 1) {
+                                        setTimeout(() => {
+                                            this.log.info(this.name + ': Command sequence successfully sent.');
+                                            this.switchService.getCharacteristic(this.platform.api.hap.Characteristic.On).updateValue(false);
+                                        }, 100);
+                                    }
+                                })
+                                .catch(error => {
+                                    this.log.error(this.name + ' - Error: ' + error.message);
+                                });
+                        }, intervalValue * index);
+                    }
+                }
+            });
     }
 
 }

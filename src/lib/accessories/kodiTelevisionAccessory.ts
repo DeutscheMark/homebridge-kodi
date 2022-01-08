@@ -3,9 +3,6 @@ import {
     PlatformConfig,
     PlatformAccessory,
     CharacteristicValue,
-    CharacteristicEventTypes,
-    CharacteristicSetCallback,
-    CharacteristicGetCallback,
 } from 'homebridge';
 
 import { KodiPlatform, KodiLogger, KodiTelevisionAccessory, TelevisionAccessoryType } from '../../internal';
@@ -52,131 +49,404 @@ export class TelevisionAccessory extends KodiTelevisionAccessory {
         this.televisionService.setCharacteristic(this.platform.Characteristic.SleepDiscoveryMode, this.platform.Characteristic.SleepDiscoveryMode.ALWAYS_DISCOVERABLE);
 
         this.televisionService.getCharacteristic(this.platform.Characteristic.Active)
-            .on(CharacteristicEventTypes.GET, this.getActive.bind(this))
-            .on(CharacteristicEventTypes.SET, this.setActive.bind(this));
+            .onGet(async () => {
+                switch (this.type) {
+                    case TelevisionAccessoryType.Controls:
+                        return kodi.getStatus(this.config)
+                            .then(status => {
+                                this.log.debug('Getting ' + this.name + ': ' + status);
+                                return status;
+                            })
+                            .catch(error => {
+                                this.log.error('Getting ' + this.name + ' - Error: ' + error.message);
+                                return false;
+                            });
+
+                    case TelevisionAccessoryType.Channels:
+                        return kodi.tvIsPlaying(this.config)
+                            .then(tvisplaying => {
+                                this.log.debug('Getting ' + this.name + ': ' + tvisplaying);
+                                return tvisplaying;
+                            })
+                            .catch(error => {
+                                this.log.error('Getting ' + this.name + ' - Error: ' + error.message);
+                                return false;
+                            });
+                }
+            })
+            .onSet(async (active) => {
+                let cmd: string | null = null;
+                if (this.config.power.on && active) {
+                    cmd = this.config.power.on;
+                } else if (this.config.power.off && !active) {
+                    cmd = this.config.power.off;
+                }
+                switch (this.type) {
+                    case TelevisionAccessoryType.Controls:
+                        if (cmd) {
+                            this.executeShellCommand(active, cmd);
+                            this.platform.closedByPlugin = !active;
+                        } else {
+                            kodi.getStatus(this.config)
+                                .then(status => {
+                                    this.log.debug('Setting ' + this.name + ': ' + status);
+                                    this.updateValue(status);
+                                })
+                                .catch(error => {
+                                    this.log.error('Setting ' + this.name + ': ' + active + ' - Error: ' + error);
+                                    this.updateValue(false);
+                                });
+                        }
+                        break;
+
+                    case TelevisionAccessoryType.Channels:
+                        if (active) {
+                            kodi.closeFavoritesWindowIfOpened(this.config, this.log)
+                                .then(() => {
+                                    kodi.tvGetChannels(this.config)
+                                        .then(result => {
+                                            if (result && result.channels) {
+                                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                                let channeltostart: any = null;
+                                                for (let index = 0; index < result.channels.length; index++) {
+                                                    const channel = result.channels[index];
+                                                    if (channel.label ===
+                                                        this.inputNames[(this.televisionService
+                                                            .getCharacteristic(this.platform.api.hap.Characteristic.ActiveIdentifier).value as number) - 1]) {
+                                                        channeltostart = channel;
+                                                    }
+                                                }
+                                                if (channeltostart) {
+                                                    kodi.getActionResult(this.config, 'Player.Open', { 'item': { 'channelid': channeltostart.channelid } })
+                                                        .then(() => {
+                                                            this.log
+                                                                .debug('Setting ' + this.name + ' Channel: ' + channeltostart.channelid + ' ("' + channeltostart.label + '")');
+                                                        })
+                                                        .catch(error => {
+                                                            this.log
+                                                                .error('Setting ' + this.name + ' Channel: ' + channeltostart.channelid +
+                                                                    ' ("' + channeltostart.label + '") - Error: ' + error.message);
+                                                        });
+                                                } else {
+                                                    this.log.error('Setting ' + this.name + ' Channel - Error: channel not found');
+                                                }
+                                            } else {
+                                                this.log.error('Setting ' + this.name + ' Channel - Error: no channels found');
+                                            }
+                                        })
+                                        .catch(error => {
+                                            this.log.error('Setting ' + this.name + ': false - Error: ' + error.message);
+                                        });
+                                })
+                                .catch(error => {
+                                    this.log.error('Setting ' + this.name + ': false - Error: ' + error.message);
+                                });
+                        } else {
+                            kodi.playerGetActivePlayers(this.config)
+                                .then(playerid => {
+                                    if (playerid !== null && playerid !== -1) {
+                                        kodi.playerStop(this.config, playerid)
+                                            .then(result => {
+                                                if (result) {
+                                                    setTimeout(() => {
+                                                        this.log.debug('Setting ' + this.name + ': false - Stopped!');
+                                                        this.televisionService.getCharacteristic(this.platform.api.hap.Characteristic.On).updateValue(false);
+                                                    }, 100);
+                                                    this.log.debug('Setting ' + this.name + ': ' + active);
+                                                } else {
+                                                    setTimeout(() => {
+                                                        this.log.debug('Setting ' + this.name + ': false - Stopped!');
+                                                        this.televisionService.getCharacteristic(this.platform.api.hap.Characteristic.On).updateValue(false);
+                                                    }, 100);
+                                                }
+                                            })
+                                            .catch(error => {
+                                                this.log.error('Setting ' + this.name + ': false - Error: ' + error.message);
+                                            });
+                                    } else {
+                                        setTimeout(() => {
+                                            this.log.debug('Setting ' + this.name + ': false - Stopped!');
+                                            this.televisionService.getCharacteristic(this.platform.api.hap.Characteristic.On).updateValue(false);
+                                        }, 100);
+                                    }
+                                })
+                                .catch(error => {
+                                    this.log.error('Setting ' + this.name + ': false - Error: ' + error.message);
+                                });
+                        }
+                        break;
+                }
+            });
 
         this.televisionService.setCharacteristic(this.platform.Characteristic.ActiveIdentifier, 999999);
         this.televisionService.getCharacteristic(this.platform.Characteristic.ActiveIdentifier)
-            .on(CharacteristicEventTypes.GET, this.getActiveIdentifier.bind(this))
-            .on(CharacteristicEventTypes.SET, this.setActiveIdentifier.bind(this));
+            .onGet(async () => {
+                switch (this.type) {
+                    case TelevisionAccessoryType.Controls:
+                        this.log.debug('Getting ' + this.name + ' Active Identifier: 1 (Home)');
+                        return 1;
+                    case TelevisionAccessoryType.Channels:
+                        return kodi.tvIsPlaying(this.config)
+                            .then(tvisplaying => {
+                                if (tvisplaying) {
+                                    return kodi.playerGetActivePlayers(this.config)
+                                        .then(playerid => {
+                                            if (playerid !== null && playerid !== -1) {
+                                                return kodi.playerGetItem(this.config, playerid as number, [])
+                                                    .then(itemresult => {
+                                                        if (itemresult && itemresult.item) {
+                                                            const itemtype = itemresult.item.type !== '' ? itemresult.item.type : '-';
+                                                            if (itemtype === 'channel') {
+                                                                let inputName;
+                                                                let activeIdentifier;
+                                                                for (let index = 0; index < this.inputNames.length; index++) {
+                                                                    if (itemresult.item.label === this.inputNames[index]) {
+                                                                        inputName = this.inputNames[index];
+                                                                        activeIdentifier = this.inputIdentifiers[index];
+                                                                    }
+                                                                }
+                                                                this.log.debug('Getting ' + this.name + ' Active Identifier: ' + activeIdentifier + ' ("' + inputName + '")');
+                                                                if (activeIdentifier) {
+                                                                    return activeIdentifier;
+                                                                } else {
+                                                                    return 1;
+                                                                }
+                                                            } else {
+                                                                this.televisionService.getCharacteristic(this.platform.api.hap.Characteristic.Active).updateValue(false);
+                                                                return 1;
+                                                            }
+                                                        } else {
+                                                            this.televisionService.getCharacteristic(this.platform.api.hap.Characteristic.Active).updateValue(false);
+                                                            return 1;
+                                                        }
+                                                    })
+                                                    .catch(error => {
+                                                        this.log.error('Getting ' + this.name + ' Active Identifier - Error: ' + error.message);
+                                                        this.televisionService.getCharacteristic(this.platform.api.hap.Characteristic.Active).updateValue(false);
+                                                        return 1;
+                                                    });
+                                            } else {
+                                                this.televisionService.getCharacteristic(this.platform.api.hap.Characteristic.Active).updateValue(false);
+                                                return 1;
+                                            }
+                                        })
+                                        .catch(error => {
+                                            this.log.error('Getting ' + this.name + ' Active Identifier - Error: ' + error.message);
+                                            this.televisionService.getCharacteristic(this.platform.api.hap.Characteristic.Active).updateValue(false);
+                                            return 1;
+                                        });
+                                } else {
+                                    this.televisionService.getCharacteristic(this.platform.api.hap.Characteristic.Active).updateValue(false);
+                                    return 1;
+                                }
+                            })
+                            .catch(error => {
+                                this.log.error('Getting ' + this.name + ' Active Identifier - Error: ' + error.message);
+                                this.televisionService.getCharacteristic(this.platform.api.hap.Characteristic.Active).updateValue(false);
+                                return 1;
+                            });
+                    default:
+                        return 1;
+                }
+            })
+            .onSet(async (activeIdentifier) => {
+                switch (this.type) {
+                    case TelevisionAccessoryType.Controls:
+                        kodi.closeFavoritesWindowIfOpened(this.config, this.log)
+                            .then(() => {
+                                switch (activeIdentifier) {
+                                    case 1:
+                                        this.activeIdentiferSet(this.name, activeIdentifier, 'Home', 'Input.Home', {});
+                                        break;
+                                    case 2:
+                                        this.activeIdentiferSet(this.name, activeIdentifier, 'Settings', 'GUI.ActivateWindow', { 'window': 'settings', 'parameters': ['Root'] });
+                                        break;
+                                    case 3:
+                                        this.activeIdentiferSet(this.name, activeIdentifier, 'Movies', 'GUI.ActivateWindow', { 'window': 'videos', 'parameters': ['MovieTitles'] });
+                                        break;
+                                    case 4:
+                                        this.activeIdentiferSet(
+                                            this.name, activeIdentifier, 'TV shows', 'GUI.ActivateWindow', { 'window': 'videos', 'parameters': ['TVShowTitles'] });
+                                        break;
+                                    case 5:
+                                        this.activeIdentiferSet(this.name, activeIdentifier, 'TV', 'GUI.ActivateWindow', { 'window': 'tvchannels', 'parameters': ['Root'] });
+                                        break;
+                                    case 6:
+                                        this.activeIdentiferSet(this.name, activeIdentifier, 'Music', 'GUI.ActivateWindow', { 'window': 'music', 'parameters': ['Root'] });
+                                        break;
+                                    case 7:
+                                        this.activeIdentiferSet(
+                                            this.name, activeIdentifier, 'Music videos', 'GUI.ActivateWindow', { 'window': 'videos', 'parameters': ['MusicVideoTitles'] });
+                                        break;
+                                    case 8:
+                                        this.activeIdentiferSet(this.name, activeIdentifier, 'Radio', 'GUI.ActivateWindow', { 'window': 'radiochannels', 'parameters': ['Root'] });
+                                        break;
+                                    case 9:
+                                        this.activeIdentiferSet(this.name, activeIdentifier, 'Games', 'GUI.ActivateWindow', { 'window': 'games', 'parameters': ['Root'] });
+                                        break;
+                                    case 10:
+                                        this.activeIdentiferSet(
+                                            this.name, activeIdentifier, 'Add-ons', 'GUI.ActivateWindow', { 'window': 'videos', 'parameters': ['Video Add-ons'] });
+                                        break;
+                                    case 11:
+                                        this.activeIdentiferSet(this.name, activeIdentifier, 'Pictures', 'GUI.ActivateWindow', { 'window': 'pictures', 'parameters': ['Root'] });
+                                        break;
+                                    case 12:
+                                        this.activeIdentiferSet(this.name, activeIdentifier, 'Videos', 'GUI.ActivateWindow', { 'window': 'videos', 'parameters': ['Root'] });
+                                        break;
+                                    case 13:
+                                        this.activeIdentiferSet(this.name, activeIdentifier, 'Favorites', 'GUI.ActivateWindow', { 'window': 'favourites', 'parameters': ['Root'] });
+                                        break;
+                                    case 14:
+                                        this.activeIdentiferSet(this.name, activeIdentifier, 'Weather', 'GUI.ActivateWindow', { 'window': 'weather', 'parameters': ['Root'] });
+                                        break;
+                                    default:
+                                        break;
+                                }
+                            })
+                            .catch(error => {
+                                this.log.error('Setting ' + this.name + ' Active Identifier: ' + activeIdentifier + ' - Error: ' + error.message);
+                            });
+                        break;
+                    case TelevisionAccessoryType.Channels:
+                        this.log.debug('Setting ' + this.name + ' Active Identifier: ' + activeIdentifier);
+                        kodi.closeFavoritesWindowIfOpened(this.config, this.log)
+                            .then(() => {
+                                kodi.tvGetChannels(this.config)
+                                    .then(result => {
+                                        if (result.channels) {
+                                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                            let channeltostart: any = null;
+                                            for (let index = 0; index < result.channels.length; index++) {
+                                                const channel = result.channels[index];
+                                                if (channel.label === this.inputNames[activeIdentifier as number - 1]) {
+                                                    channeltostart = channel;
+                                                }
+                                            }
+                                            if (channeltostart) {
+                                                kodi.getActionResult(this.config, 'Player.Open', { 'item': { 'channelid': channeltostart.channelid } })
+                                                    .then(([ok]) => {
+                                                        if (ok) {
+                                                            this.log
+                                                                .debug('Setting ' + this.name + ' Active Identifier: ' + activeIdentifier + ' ("' + channeltostart.label + '")');
+                                                        } else {
+                                                            this.log.debug('Setting ' + this.name + ' Active Identifier: ' + activeIdentifier +
+                                                                ' ("' + channeltostart.label + '") (not ok)');
+                                                        }
+                                                    })
+                                                    .catch(error => {
+                                                        this.log.error('Setting ' + this.name + ' Active Identifier: ' + activeIdentifier + ' - Error: ' + error.message);
+                                                    });
+                                            } else {
+                                                this.log.error('Setting ' + this.name + ' Active Identifier: ' + activeIdentifier + ' - Error: channel not found');
+                                            }
+                                        } else {
+                                            this.log.error('Setting ' + this.name + ' Active Identifier: ' + activeIdentifier + ' - Error: no channels found');
+                                        }
+                                    })
+                                    .catch(error => {
+                                        this.log.error('Setting ' + this.name + ' Active Identifier: ' + activeIdentifier + ' - Error: ' + error.message);
+                                    });
+                            })
+                            .catch(error => {
+                                this.log.error('Setting ' + this.name + ' Active Identifier: ' + activeIdentifier + ' - Error: ' + error.message);
+                            });
+                        break;
+                    default:
+                        break;
+                }
+            });
 
         this.televisionService.getCharacteristic(this.platform.api.hap.Characteristic.PictureMode)
-            .on(CharacteristicEventTypes.SET, (mode: CharacteristicValue, callback: CharacteristicSetCallback) => {
-                this.log.debug('Setting ' + name + ' PictureMode: ' + mode);
-                callback();
+            .onSet(async (picturemode) => {
+                this.log.debug('Setting ' + name + ' PictureMode: ' + picturemode);
             });
 
         this.televisionService.getCharacteristic(this.platform.api.hap.Characteristic.PowerModeSelection)
-            .on(CharacteristicEventTypes.SET, (mode: CharacteristicValue, callback: CharacteristicSetCallback) => {
-                kodi.getActionResult(config, this.log, 'Input.Home', {}, (error) => {
-                    this.log.debug('Setting ' + name + ' PowerModeSelection: ' + mode);
-                    callback(error);
-                });
+            .onSet(async (picturemode) => {
+                kodi.getActionResult(config, 'Input.Home', {})
+                    .then(() => {
+                        this.log.debug('Setting ' + name + ' PowerModeSelection: ' + picturemode);
+                    })
+                    .catch(error => {
+                        this.log.debug('Setting ' + name + ' PowerModeSelection: ' + picturemode + ' - Error: ' + error.message);
+                    });
             });
 
         this.televisionService.getCharacteristic(this.platform.api.hap.Characteristic.RemoteKey)
-            .on(CharacteristicEventTypes.SET, (remoteKey: CharacteristicValue, callback: CharacteristicSetCallback) => {
+            .onSet(async (remoteKey) => {
                 switch (remoteKey) {
                     case this.platform.api.hap.Characteristic.RemoteKey.REWIND:
-                        kodi.playerGetActivePlayers(config, this.log, (error, playerid) => {
-                            if (!error && playerid && playerid !== -1) {
-                                kodi.getActionResult(config, this.log, 'Player.Seek', { 'playerid': playerid, 'value': 'smallbackward' }, (error) => {
-                                    this.log.debug('Setting RemoteKey: REWIND');
-                                    callback(error);
-                                });
-                            }
-                        });
+                        kodi.playerGetActivePlayers(config)
+                            .then(playerid => {
+                                this.remoteKeyPressed('REWIND', 'Player.Seek', { 'playerid': playerid, 'value': 'smallbackward' });
+                            })
+                            .catch(error => {
+                                this.log.error('Setting RemoteKey: REWIND - Error: ' + error.message);
+                            });
                         break;
                     case this.platform.api.hap.Characteristic.RemoteKey.FAST_FORWARD:
-                        kodi.playerGetActivePlayers(config, this.log, (error, playerid) => {
-                            if (!error && playerid && playerid !== -1) {
-                                kodi.getActionResult(config, this.log, 'Player.Seek', { 'playerid': playerid, 'value': 'smallforward' }, (error) => {
-                                    this.log.debug('Setting RemoteKey: FAST_FORWARD');
-                                    callback(error);
-                                });
-                            }
-                        });
+                        kodi.playerGetActivePlayers(config)
+                            .then(playerid => {
+                                this.remoteKeyPressed('FAST_FORWARD', 'Player.Seek', { 'playerid': playerid, 'value': 'smallforward' });
+                            })
+                            .catch(error => {
+                                this.log.error('Setting RemoteKey: FAST_FORWARD - Error: ' + error.message);
+                            });
                         break;
                     case this.platform.api.hap.Characteristic.RemoteKey.NEXT_TRACK:
-                        kodi.playerGetActivePlayers(config, this.log, (error, playerid) => {
-                            if (!error && playerid && playerid !== -1) {
-                                kodi.getActionResult(config, this.log, 'Player.GoTo', { 'playerid': playerid, 'to': 'next' }, (error) => {
-                                    this.log.debug('Setting RemoteKey: NEXT_TRACK');
-                                    callback(error);
-                                });
-                            }
-                        });
+                        kodi.playerGetActivePlayers(config)
+                            .then(playerid => {
+                                this.remoteKeyPressed('NEXT_TRACK', 'Player.GoTo', { 'playerid': playerid, 'to': 'next' });
+                            })
+                            .catch(error => {
+                                this.log.error('Setting RemoteKey: NEXT_TRACK - Error: ' + error.message);
+                            });
                         break;
                     case this.platform.api.hap.Characteristic.RemoteKey.PREVIOUS_TRACK:
-                        kodi.playerGetActivePlayers(config, this.log, (error, playerid) => {
-                            if (!error && playerid && playerid !== -1) {
-                                kodi.getActionResult(config, this.log, 'Player.GoTo', { 'playerid': playerid, 'to': 'previous' }, (error) => {
-                                    this.log.debug('Setting RemoteKey: PREVIOUS_TRACK');
-                                    callback(error);
-                                });
-                            }
-                        });
+                        kodi.playerGetActivePlayers(config)
+                            .then(playerid => {
+                                this.remoteKeyPressed('PREVIOUS_TRACK', 'Player.GoTo', { 'playerid': playerid, 'to': 'previous' });
+                            })
+                            .catch(error => {
+                                this.log.error('Setting RemoteKey: PREVIOUS_TRACK - Error: ' + error.message);
+                            });
                         break;
                     case this.platform.api.hap.Characteristic.RemoteKey.ARROW_UP:
-                        kodi.getActionResult(config, this.log, 'Input.Up', {}, (error) => {
-                            this.log.debug('Setting RemoteKey: ARROW_UP');
-                            callback(error);
-                        });
+                        this.remoteKeyPressed('ARROW_UP', 'Input.Up', {});
                         break;
                     case this.platform.api.hap.Characteristic.RemoteKey.ARROW_DOWN:
-                        kodi.getActionResult(config, this.log, 'Input.Down', {}, (error) => {
-                            this.log.debug('Setting RemoteKey: ARROW_DOWN');
-                            callback(error);
-                        });
+                        this.remoteKeyPressed('ARROW_DOWN', 'Input.Down', {});
                         break;
                     case this.platform.api.hap.Characteristic.RemoteKey.ARROW_LEFT:
-                        kodi.getActionResult(config, this.log, 'Input.Left', {}, (error) => {
-                            this.log.debug('Setting RemoteKey: ARROW_LEFT');
-                            callback(error);
-                        });
+                        this.remoteKeyPressed('ARROW_LEFT', 'Input.Left', {});
                         break;
                     case this.platform.api.hap.Characteristic.RemoteKey.ARROW_RIGHT:
-                        kodi.getActionResult(config, this.log, 'Input.Right', {}, (error) => {
-                            this.log.debug('Setting RemoteKey: ARROW_RIGHT');
-                            callback(error);
-                        });
+                        this.remoteKeyPressed('ARROW_RIGHT', 'Input.Right', {});
                         break;
                     case this.platform.api.hap.Characteristic.RemoteKey.SELECT:
-                        kodi.getActionResult(config, this.log, 'Input.Select', {}, (error) => {
-                            this.log.debug('Setting RemoteKey: SELECT');
-                            callback(error);
-                        });
+                        this.remoteKeyPressed('SELECT', 'Input.Select', {});
                         break;
                     case this.platform.api.hap.Characteristic.RemoteKey.BACK:
-                        kodi.getActionResult(config, this.log, 'Input.Back', {}, (error) => {
-                            this.log.debug('Setting RemoteKey: BACK');
-                            callback(error);
-                        });
+                        this.remoteKeyPressed('BACK', 'Input.Back', {});
                         break;
                     case this.platform.api.hap.Characteristic.RemoteKey.EXIT:
-                        kodi.getActionResult(config, this.log, 'Input.Home', {}, (error) => {
-                            this.log.debug('Setting RemoteKey: EXIT');
-                            callback(error);
-                        });
+                        this.remoteKeyPressed('EXIT', 'Input.Home', {});
                         break;
                     case this.platform.api.hap.Characteristic.RemoteKey.PLAY_PAUSE:
-                        kodi.playerGetActivePlayers(config, this.log, (error, playerid) => {
-                            if (!error && playerid && playerid !== -1) {
-                                kodi.getActionResult(config, this.log, 'Player.PlayPause', { 'playerid': playerid }, (error) => {
-                                    this.log.debug('Setting RemoteKey: PLAY_PAUSE');
-                                    callback(error);
-                                });
-                            }
-                        });
+                        kodi.playerGetActivePlayers(config)
+                            .then(playerid => {
+                                this.remoteKeyPressed('PLAY_PAUSE', 'Player.PlayPause', { 'playerid': playerid });
+                            })
+                            .catch(error => {
+                                this.log.error('Setting RemoteKey: PLAY_PAUSE - Error: ' + error.message);
+                            });
                         break;
                     case this.platform.api.hap.Characteristic.RemoteKey.INFORMATION:
-                        kodi.getActionResult(config, this.log, 'Input.ShowOSD', {}, (error) => {
-                            this.log.debug('Setting RemoteKey: INFORMATION');
-                            callback(error);
-                        });
+                        this.remoteKeyPressed('INFORMATION', 'Input.ShowOSD', {});
                         break;
                     default:
-                        callback(null);
+                        this.log.debug('Setting RemoteKey: Unknown key!');
                         break;
                 }
             });
@@ -198,27 +468,37 @@ export class TelevisionAccessory extends KodiTelevisionAccessory {
             .setCharacteristic(this.platform.api.hap.Characteristic.VolumeControlType, this.platform.api.hap.Characteristic.VolumeControlType.ABSOLUTE);
 
         televisionSpeakerService.getCharacteristic(this.platform.api.hap.Characteristic.VolumeSelector)
-            .on(CharacteristicEventTypes.SET, (selector: CharacteristicValue, callback: CharacteristicSetCallback) => {
+            .onSet(async (selector) => {
                 const volume = selector ? 'decrement' : 'increment';
-                kodi.applicationSetVolume(config, this.log, volume, (error, result) => {
-                    if (!error && result) {
-                        this.log.debug('Setting ' + name + ': ' + volume);
-                    }
-                    callback();
-                });
+                kodi.applicationSetVolume(config, volume)
+                    .then(result => {
+                        if (result) {
+                            this.log.debug('Setting ' + name + ': ' + volume);
+                        } else {
+                            this.log.debug('Setting ' + name + ': ' + volume + ' (no result)');
+                        }
+                    })
+                    .catch(error => {
+                        this.log.debug('Setting ' + name + ': ' + volume + ' - Error: ' + error.message);
+                    });
             });
 
         televisionSpeakerService.getCharacteristic(this.platform.api.hap.Characteristic.Volume)
-            .on(CharacteristicEventTypes.GET, (callback: CharacteristicGetCallback) => {
-                kodi.applicationGetProperties(config, this.log, ['volume'], (error, result) => {
-                    if (!error && result) {
-                        const volume = result.volume ? result.volume : 0;
-                        this.log.debug('Getting ' + name + ': ' + volume + ' %');
-                        callback(null, volume);
-                    } else {
-                        callback(null, 0);
-                    }
-                });
+            .onGet(async () => {
+                return kodi.applicationGetProperties(config, ['volume'])
+                    .then(result => {
+                        if (result) {
+                            const volume = result.volume ? result.volume : 0;
+                            this.log.debug('Getting ' + name + ': ' + volume + ' %');
+                            return volume;
+                        } else {
+                            return 0;
+                        }
+                    })
+                    .catch(error => {
+                        this.log.error('Getting ' + name + ' - Error: ' + error.message);
+                        return 0;
+                    });
             });
 
         this.televisionService.addLinkedService(televisionSpeakerService);
@@ -267,292 +547,43 @@ export class TelevisionAccessory extends KodiTelevisionAccessory {
         this.accessory.addService(this.televisionService);
     }
 
-    getActive(callback: CharacteristicGetCallback) {
-        switch (this.type) {
-            case TelevisionAccessoryType.Controls:
-                kodi.getStatus(this.config, (error, status) => {
-                    if (!error) {
-                        this.log.debug('Getting ' + this.name + ': ' + status);
-                        callback(null, status);
-                    } else {
-                        callback(null, false);
-                    }
-                });
-                break;
-
-            case TelevisionAccessoryType.Channels:
-                kodi.tvIsPlaying(this.config, this.log, (tvplaying) => {
-                    this.log.debug('Getting ' + this.name + ': ' + tvplaying);
-                    callback(null, tvplaying);
-                });
-                break;
-
-            default:
-                break;
-        }
+    executeShellCommand(on: CharacteristicValue, cmd: string) {
+        kodi.executeShellCommand(cmd)
+            .then(output => {
+                this.log.debug('Setting ' + this.name + ': ' + on + ' with output: ' + output);
+                this.platform.checkKodiStatus();
+            })
+            .catch(error => {
+                this.log.error('Setting ' + this.name + ': ' + on + ' - Error: ' + error.message);
+            });
     }
 
-    setActive(active: CharacteristicValue, callback: CharacteristicSetCallback) {
-        switch (this.type) {
-            case TelevisionAccessoryType.Controls:
-                kodi.getStatus(this.config, (error, status) => {
-                    this.log.debug('Setting ' + this.name + ': ' + (!error && status));
-                    setTimeout(() => {
-                        this.televisionService.getCharacteristic(this.platform.api.hap.Characteristic.Active)
-                            .updateValue(
-                                (!error && status) ?
-                                    this.platform.api.hap.Characteristic.Active.ACTIVE :
-                                    this.platform.api.hap.Characteristic.Active.INACTIVE,
-                            );
-                    }, 100);
-                });
-                callback();
-                break;
-
-            case TelevisionAccessoryType.Channels:
-                if (active) {
-                    kodi.closeFavoritesWindowIfOpened(this.config, this.log, () => {
-                        kodi.tvGetChannels(this.config, this.log, (error, result) => {
-                            if (!error && result && result.channels) {
-                                let channeltostart: any = null;
-                                for (let index = 0; index < result.channels.length; index++) {
-                                    const channel = result.channels[index];
-                                    if (channel.label ===
-                                        this.inputNames[(this.televisionService.getCharacteristic(this.platform.api.hap.Characteristic.ActiveIdentifier).value as number) - 1]) {
-                                        channeltostart = channel;
-
-                                    }
-                                }
-                                if (channeltostart) {
-                                    kodi.getActionResult(this.config, this.log, 'Player.Open', { 'item': { 'channelid': channeltostart.channelid } }, (error) => {
-                                        this.log.debug('Setting ' + this.name + ' Channel: ' + channeltostart.channelid + ' ("' + channeltostart.label + '")');
-                                        callback(error);
-                                    });
-                                } else {
-                                    callback(new Error('channel not found'));
-                                }
-                            } else {
-                                callback(error);
-                            }
-                        });
-                    });
-                } else {
-                    kodi.playerGetActivePlayers(this.config, this.log, (error, playerid) => {
-                        if (!error && playerid && playerid !== -1) {
-                            kodi.playerStop(this.config, this.log, playerid, (error, result) => {
-                                if (!error && result) {
-                                    setTimeout(() => {
-                                        this.log.debug('Setting ' + this.name + ': false - Stopped!');
-                                        this.televisionService.getCharacteristic(this.platform.api.hap.Characteristic.On).updateValue(false);
-                                    }, 100);
-                                    this.log.debug('Setting ' + this.name + ': ' + active);
-                                    callback();
-                                } else {
-                                    setTimeout(() => {
-                                        this.log.debug('Setting ' + this.name + ': false - Stopped!');
-                                        this.televisionService.getCharacteristic(this.platform.api.hap.Characteristic.On).updateValue(false);
-                                    }, 100);
-                                    callback();
-                                }
-                            });
-                        } else {
-                            setTimeout(() => {
-                                this.log.debug('Setting ' + this.name + ': false - Stopped!');
-                                this.televisionService.getCharacteristic(this.platform.api.hap.Characteristic.On).updateValue(false);
-                            }, 100);
-                            callback();
-                        }
-                    });
-                }
-                break;
-
-            default:
-                callback();
-                break;
-        }
+    updateValue(on: boolean) {
+        setTimeout(() => {
+            this.televisionService.getCharacteristic(this.platform.api.hap.Characteristic.Active).updateValue(on);
+        }, 100);
     }
 
-    getActiveIdentifier(callback: CharacteristicGetCallback) {
-        switch (this.type) {
-            case TelevisionAccessoryType.Controls:
-                this.log.debug('Getting ' + this.name + ' Active Identifier: 1 (Home)');
-                callback(null, 1);
-                break;
-            case TelevisionAccessoryType.Channels:
-                kodi.tvIsPlaying(this.config, this.log, (tvplaying) => {
-                    if (tvplaying) {
-                        kodi.playerGetActivePlayers(this.config, this.log, (error, playerid) => {
-                            if (!error && playerid !== -1) {
-                                kodi.playerGetItem(this.config, this.log, playerid as number, [], (error, itemresult) => {
-                                    if (!error && itemresult && itemresult.item) {
-                                        const itemtype = itemresult.item.type !== '' ? itemresult.item.type : '-';
-                                        if (itemtype === 'channel') {
-                                            let inputName;
-                                            let activeIdentifier;
-                                            for (let index = 0; index < this.inputNames.length; index++) {
-                                                if (itemresult.item.label === this.inputNames[index]) {
-                                                    inputName = this.inputNames[index];
-                                                    activeIdentifier = this.inputIdentifiers[index];
-                                                }
-                                            }
-                                            this.log.debug('Getting ' + this.name + ' Active Identifier: ' + activeIdentifier + ' ("' + inputName + '")');
-                                            if (activeIdentifier) {
-                                                callback(null, activeIdentifier);
-                                            } else {
-                                                callback(null, 1);
-                                            }
-                                        } else {
-                                            this.televisionService.getCharacteristic(this.platform.api.hap.Characteristic.Active).updateValue(false);
-                                            callback(null, 1);
-                                        }
-                                    } else {
-                                        this.televisionService.getCharacteristic(this.platform.api.hap.Characteristic.Active).updateValue(false);
-                                        callback(null, 1);
-                                    }
-                                });
-                            } else {
-                                this.televisionService.getCharacteristic(this.platform.api.hap.Characteristic.Active).updateValue(false);
-                                callback(null, 1);
-                            }
-                        });
-                    } else {
-                        this.televisionService.getCharacteristic(this.platform.api.hap.Characteristic.Active).updateValue(false);
-                        callback(null, 1);
-                    }
-                });
-                break;
-            default:
-                callback(null, 1);
-                break;
-        }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    remoteKeyPressed(name: string, method: string, parameters: any) {
+        kodi.getActionResult(this.config, method, parameters)
+            .then(() => {
+                this.log.debug('Setting RemoteKey: ' + name);
+            })
+            .catch(error => {
+                this.log.error('Setting RemoteKey: ' + name + ' - Error: ' + error.message);
+            });
     }
 
-    setActiveIdentifier(activeIdentifier: CharacteristicValue, callback: CharacteristicSetCallback) {
-        switch (this.type) {
-            case TelevisionAccessoryType.Controls:
-                kodi.closeFavoritesWindowIfOpened(this.config, this.log, () => {
-                    switch (activeIdentifier) {
-                        case 1:
-                            kodi.getActionResult(this.config, this.log, 'Input.Home', {}, (error) => {
-                                this.log.debug('Setting ' + this.name + ' Active Identifier: ' + activeIdentifier + ' (Home)');
-                                callback(error);
-                            });
-                            break;
-                        case 2:
-                            kodi.getActionResult(this.config, this.log, 'GUI.ActivateWindow', { 'window': 'settings', 'parameters': ['Root'] }, (error) => {
-                                this.log.debug('Setting ' + this.name + ' Active Identifier: ' + activeIdentifier + ' (Settings)');
-                                callback(error);
-                            });
-                            break;
-                        case 3:
-                            kodi.getActionResult(this.config, this.log, 'GUI.ActivateWindow', { 'window': 'videos', 'parameters': ['MovieTitles'] }, (error) => {
-                                this.log.debug('Setting ' + this.name + ' Active Identifier: ' + activeIdentifier + ' (Movies)');
-                                callback(error);
-                            });
-                            break;
-                        case 4:
-                            kodi.getActionResult(this.config, this.log, 'GUI.ActivateWindow', { 'window': 'videos', 'parameters': ['TVShowTitles'] }, (error) => {
-                                this.log.debug('Setting ' + this.name + ' Active Identifier: ' + activeIdentifier + ' (TV shows)');
-                                callback(error);
-                            });
-                            break;
-                        case 5:
-                            kodi.getActionResult(this.config, this.log, 'GUI.ActivateWindow', { 'window': 'tvchannels', 'parameters': ['Root'] }, (error) => {
-                                this.log.debug('Setting ' + this.name + ' Active Identifier: ' + activeIdentifier + ' (TV)');
-                                callback(error);
-                            });
-                            break;
-                        case 6:
-                            kodi.getActionResult(this.config, this.log, 'GUI.ActivateWindow', { 'window': 'music', 'parameters': ['Root'] }, (error) => {
-                                this.log.debug('Setting ' + this.name + ' Active Identifier: ' + activeIdentifier + ' (Music)');
-                                callback(error);
-                            });
-                            break;
-                        case 7:
-                            kodi.getActionResult(this.config, this.log, 'GUI.ActivateWindow', { 'window': 'videos', 'parameters': ['MusicVideoTitles'] }, (error) => {
-                                this.log.debug('Setting ' + this.name + ' Active Identifier: ' + activeIdentifier + ' (Music videos)');
-                                callback(error);
-                            });
-                            break;
-                        case 8:
-                            kodi.getActionResult(this.config, this.log, 'GUI.ActivateWindow', { 'window': 'radiochannels', 'parameters': ['Root'] }, (error) => {
-                                this.log.debug('Setting ' + this.name + ' Active Identifier: ' + activeIdentifier + ' (Radio)');
-                                callback(error);
-                            });
-                            break;
-                        case 9:
-                            kodi.getActionResult(this.config, this.log, 'GUI.ActivateWindow', { 'window': 'games', 'parameters': ['Root'] }, (error) => {
-                                this.log.debug('Setting ' + this.name + ' Active Identifier: ' + activeIdentifier + ' (Games)');
-                                callback(error);
-                            });
-                            break;
-                        case 10:
-                            kodi.getActionResult(this.config, this.log, 'GUI.ActivateWindow', { 'window': 'videos', 'parameters': ['Video Add-ons'] }, (error) => {
-                                this.log.debug('Setting ' + this.name + ' Active Identifier: ' + activeIdentifier + ' (Add-ons)');
-                                callback(error);
-                            });
-                            break;
-                        case 11:
-                            kodi.getActionResult(this.config, this.log, 'GUI.ActivateWindow', { 'window': 'pictures', 'parameters': ['Root'] }, (error) => {
-                                this.log.debug('Setting ' + this.name + ' Active Identifier: ' + activeIdentifier + ' (Pictures)');
-                                callback(error);
-                            });
-                            break;
-                        case 12:
-                            kodi.getActionResult(this.config, this.log, 'GUI.ActivateWindow', { 'window': 'videos', 'parameters': ['Root'] }, (error) => {
-                                this.log.debug('Setting ' + this.name + ' Active Identifier: ' + activeIdentifier + ' (Videos)');
-                                callback(error);
-                            });
-                            break;
-                        case 13:
-                            kodi.getActionResult(this.config, this.log, 'GUI.ActivateWindow', { 'window': 'favourites', 'parameters': ['Root'] }, (error) => {
-                                this.log.debug('Setting ' + this.name + ' Active Identifier: ' + activeIdentifier + ' (Favorites)');
-                                callback(error);
-                            });
-                            break;
-                        case 14:
-                            kodi.getActionResult(this.config, this.log, 'GUI.ActivateWindow', { 'window': 'weather', 'parameters': ['Root'] }, (error) => {
-                                this.log.debug('Setting ' + this.name + ' Active Identifier: ' + activeIdentifier + ' (Weather)');
-                                callback(error);
-                            });
-                            break;
-                        default:
-                            callback(null);
-                            break;
-                    }
-                });
-                break;
-            case TelevisionAccessoryType.Channels:
-                this.log.debug('Setting ' + this.name + ' Active Identifier: ' + activeIdentifier);
-                kodi.closeFavoritesWindowIfOpened(this.config, this.log, () => {
-                    kodi.tvGetChannels(this.config, this.log, (error, result) => {
-                        if (!error && result.channels) {
-                            let channeltostart: any = null;
-                            for (let index = 0; index < result.channels.length; index++) {
-                                const channel = result.channels[index];
-                                if (channel.label === this.inputNames[activeIdentifier as number - 1]) {
-                                    channeltostart = channel;
-                                }
-                            }
-                            if (channeltostart) {
-                                kodi.getActionResult(this.config, this.log, 'Player.Open', { 'item': { 'channelid': channeltostart.channelid } }, (error) => {
-                                    this.log.debug('Setting ' + this.name + ' Active Identifier: ' + activeIdentifier + ' ("' + channeltostart.label + '")');
-                                    callback(error);
-                                    return;
-                                });
-                            } else {
-                                callback(new Error('channel not found'));
-                            }
-                        } else {
-                            callback(error);
-                        }
-                    });
-                });
-                break;
-            default:
-                callback(null);
-                break;
-        }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    activeIdentiferSet(name: string, activeIdentifier: CharacteristicValue, inputname: string, method: string, parameters: any) {
+        kodi.getActionResult(this.config, method, parameters)
+            .then(() => {
+                this.log.debug('Setting ' + name + ' Active Identifier: ' + activeIdentifier + ' (' + inputname + ')');
+            })
+            .catch(error => {
+                this.log.error('Setting ' + name + ' Active Identifier: ' + activeIdentifier + ' (' + inputname + ') - Error: ' + error.message);
+            });
     }
 
 }

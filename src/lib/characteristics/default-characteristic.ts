@@ -8,7 +8,7 @@ export default function defaultCharacteristic(Characteristic: typeof Characteris
             UUID: string,
             props?: CharacteristicProps,
         ) {
-            super(displayName, UUID);
+            super(displayName, UUID, props!);
             this.setProps({
                 format: Formats.STRING,
                 perms: [Perms.PAIRED_READ, Perms.NOTIFY],

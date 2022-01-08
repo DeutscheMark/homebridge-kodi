@@ -2,10 +2,6 @@ import {
     Service,
     PlatformConfig,
     PlatformAccessory,
-    CharacteristicValue,
-    CharacteristicEventTypes,
-    CharacteristicSetCallback,
-    CharacteristicGetCallback,
 } from 'homebridge';
 
 import { KodiPlatform, KodiLogger, KodiAccessory } from '../../internal';
@@ -44,12 +40,114 @@ export class PlayerLightbulbAccessory extends KodiAccessory {
         this.lightbulbService.setCharacteristic(this.platform.Characteristic.Name, name);
 
         this.lightbulbService.getCharacteristic(this.platform.Characteristic.On)
-            .on(CharacteristicEventTypes.GET, this.getOn.bind(this))
-            .on(CharacteristicEventTypes.SET, this.setOn.bind(this));
+            .onGet(async () => {
+                return kodi.isPlaying(this.config)
+                    .then(([playing]) => {
+                        this.log.debug('Getting ' + this.name + ': ' + playing);
+                        return playing;
+                    })
+                    .catch(error => {
+                        this.log.error('Getting ' + this.name + ': - Error: ' + error);
+                        return false;
+                    });
+            })
+            .onSet(async (on) => {
+                kodi.playerGetActivePlayers(this.config)
+                    .then(playerid => {
+                        if (playerid !== null && playerid !== -1) {
+                            kodi.playerSetPlay(this.config, playerid, on as boolean)
+                                .then(result => {
+                                    if (result) {
+                                        const speed = result.speed ? result.speed : 0;
+                                        if (speed !== 0) {
+                                            this.log.debug('Setting ' + this.name + ': ' + on);
+                                        } else {
+                                            this.updateValueToFalse();
+                                        }
+                                    } else {
+                                        this.updateValueToFalse();
+                                    }
+                                })
+                                .catch(error => {
+                                    this.log.error('Setting ' + this.name + ': ' + on + ' - Error: ' + error.message);
+                                    this.updateValueToFalse();
+                                });
+                        } else {
+                            this.updateValueToFalse();
+                        }
+                    })
+                    .catch(error => {
+                        this.log.error('Setting ' + this.name + ': ' + on + ' - Error: ' + error.message);
+                        this.updateValueToFalse();
+                    });
+            });
 
         this.lightbulbService.getCharacteristic(this.platform.Characteristic.Brightness)
-            .on(CharacteristicEventTypes.GET, this.getBrightness.bind(this))
-            .on(CharacteristicEventTypes.SET, this.setBrightness.bind(this));
+            .onGet(async () => {
+                return kodi.playerGetActivePlayers(this.config)
+                    .then(playerid => {
+                        if (playerid !== null && playerid !== -1) {
+                            return kodi.playerGetProperties(this.config, playerid, ['percentage', 'totaltime'])
+                                .then(result => {
+                                    if (result && result.percentage) {
+                                        const percentage = Math.round(result.percentage ? result.percentage : 0);
+                                        const timeAndTotaltime =
+                                            result.totaltime.hours +
+                                            ':' +
+                                            result.totaltime.minutes.toString().padStart(2, '0') +
+                                            ':' +
+                                            result.totaltime.seconds.toString().padStart(2, '0');
+                                        if (percentage === 0 && timeAndTotaltime === '0:00:00') {
+                                            this.log.debug('Getting ' + this.name + ': 100 %');
+                                            return 100;
+                                        } else {
+                                            this.log.debug('Getting ' + this.name + ': ' + percentage + ' %');
+                                            return percentage;
+                                        }
+                                    } else {
+                                        this.log.debug('Getting ' + this.name + ': 0 % (no result)');
+                                        return 0;
+                                    }
+                                })
+                                .catch(error => {
+                                    this.log.error('Getting ' + this.name + ': - Error: ' + error.message);
+                                    return 0;
+                                });
+                        } else {
+                            this.log.debug('Getting ' + this.name + ': Nothing seems to be playing!');
+                            return 0;
+                        }
+                    })
+                    .catch(error => {
+                        this.log.error('Getting ' + this.name + ': - Error: ' + error.message);
+                        return 0;
+                    });
+            })
+            .onSet(async (brightness) => {
+                const percentage = Math.round(brightness as number);
+                kodi.playerGetActivePlayers(this.config)
+                    .then(playerid => {
+                        if (playerid !== null && playerid !== -1) {
+                            kodi.playerSeek(this.config, playerid, percentage)
+                                .then(result => {
+                                    if (result && result.percentage) {
+                                        const percentage = Math.round(result.percentage ? result.percentage : 0);
+                                        this.log.debug('Setting ' + this.name + ': ' + percentage + ' %');
+                                    } else {
+                                        this.log.debug('Setting ' + this.name + ': ' + percentage + ' % (no result)');
+                                    }
+                                })
+                                .catch(error => {
+                                    this.log.error('Sertting ' + this.name + ': ' + percentage + ' % - Error: ' + error.message);
+                                });
+                        } else {
+                            this.log.debug('Setting ' + this.name + ': ' + percentage + ' % - Nothing seems to be playing!');
+                        }
+                    })
+                    .catch(error => {
+                        this.log.error('Setting ' + this.name + ': ' + percentage + ' % - Error: ' + error.message);
+                    });
+            });
 
         this.lightbulbService.getCharacteristic(platform.customCharacteristics.Type) ||
             this.lightbulbService.addCharacteristic(platform.customCharacteristics.Type);
@@ -65,98 +163,17 @@ export class PlayerLightbulbAccessory extends KodiAccessory {
             this.lightbulbService.addCharacteristic(platform.customCharacteristics.Album);
     }
 
-    getOn(callback: CharacteristicGetCallback) {
-        kodi.isPlaying(this.config, this.log, (playing) => {
-            callback(null, playing);
-        });
-    }
-
-    setOn(on: CharacteristicValue, callback: CharacteristicSetCallback) {
-        kodi.playerGetActivePlayers(this.config, this.log, (error, playerid) => {
-            if (!error && playerid && playerid !== -1) {
-                kodi.playerSetPlay(this.config, this.log, playerid, on as boolean, (error, result) => {
-                    if (!error && result) {
-                        const speed = result.speed ? result.speed : 0;
-                        if (speed !== 0) {
-                            this.log.debug('Setting ' + this.name + ': ' + on);
-                            callback();
-                        } else {
-                            setTimeout(() => {
-                                this.log.debug('Setting ' + this.name + ': false - Nothing pausable seems to be playing!');
-                                kodi.isPlaying(this.config, this.log, (playing) => {
-                                    this.lightbulbService.getCharacteristic(this.platform.api.hap.Characteristic.On).updateValue(playing);
-                                });
-                            }, 100);
-                            callback();
-                        }
-                    } else {
-                        setTimeout(() => {
-                            this.log.debug('Setting ' + this.name + ': false - Nothing pausable seems to be playing!');
-                            kodi.isPlaying(this.config, this.log, (playing) => {
-                                this.lightbulbService.getCharacteristic(this.platform.api.hap.Characteristic.On).updateValue(playing);
-                            });
-                        }, 100);
-                        callback();
-                    }
-                });
-            } else {
-                setTimeout(() => {
+    updateValueToFalse() {
+        setTimeout(() => {
+            kodi.isPlaying(this.config)
+                .then(([, playing]) => {
                     this.log.debug('Setting ' + this.name + ': false - Nothing pausable seems to be playing!');
-                    kodi.isPlaying(this.config, this.log, (playing) => {
-                        this.lightbulbService.getCharacteristic(this.platform.api.hap.Characteristic.On).updateValue(playing);
-                    });
-                }, 100);
-                callback();
-            }
-        });
-    }
-
-    getBrightness(callback: CharacteristicGetCallback) {
-        kodi.playerGetActivePlayers(this.config, this.log, (error, playerid) => {
-            if (!error && playerid && playerid !== -1) {
-                kodi.playerGetProperties(this.config, this.log, playerid, ['percentage', 'totaltime'], (error, result) => {
-                    if (!error && result) {
-                        const percentage = Math.round(result.percentage ? result.percentage : 0);
-                        const timeAndTotaltime =
-                            result.totaltime.hours +
-                            ':' +
-                            result.totaltime.minutes.toString().padStart(2, '0') +
-                            ':' +
-                            result.totaltime.seconds.toString().padStart(2, '0');
-                        if (percentage === 0 && timeAndTotaltime === '0:00:00') {
-                            this.log.debug('Getting ' + this.name + ': 100 %');
-                            callback(null, 100);
-                        } else {
-                            this.log.debug('Getting ' + this.name + ': ' + percentage + ' %');
-                            callback(null, percentage);
-                        }
-                    } else {
-                        callback(null, 0);
-                    }
+                    this.lightbulbService.getCharacteristic(this.platform.api.hap.Characteristic.On).updateValue(playing);
+                })
+                .catch(error => {
+                    this.log.error('Setting ' + this.name + ': false - Nothing pausable seems to be playing! - Error: ' + error.message);
                 });
-            } else {
-                callback(null, 0);
-            }
-        });
-    }
-
-    setBrightness(brightness: CharacteristicValue, callback: CharacteristicSetCallback) {
-        kodi.playerGetActivePlayers(this.config, this.log, (error, playerid) => {
-            if (!error && playerid && playerid !== -1) {
-                const percentage = Math.round(brightness as number);
-                kodi.playerSeek(this.config, this.log, playerid, percentage, (error, result) => {
-                    if (!error && result) {
-                        const percentage = Math.round(result.percentage ? result.percentage : 0);
-                        this.log.debug('Setting ' + this.name + ': ' + percentage + ' %');
-                        callback();
-                    } else {
-                        callback();
-                    }
-                });
-            } else {
-                callback();
-            }
-        });
+        }, 100);
     }
 
 }
@@ -193,54 +210,60 @@ export class PlayerPlaySwitchAccessory extends KodiAccessory {
         this.switchService.setCharacteristic(this.platform.Characteristic.Name, name);
 
         this.switchService.getCharacteristic(this.platform.Characteristic.On)
-            .on(CharacteristicEventTypes.GET, this.getOn.bind(this))
-            .on(CharacteristicEventTypes.SET, this.setOn.bind(this));
-    }
-
-    getOn(callback: CharacteristicGetCallback) {
-        kodi.isPlaying(this.config, this.log, (playing) => {
-            callback(null, playing);
-        });
-    }
-
-    setOn(on: CharacteristicValue, callback: CharacteristicSetCallback) {
-        kodi.playerGetActivePlayers(this.config, this.log, (error, playerid) => {
-            if (!error && playerid && playerid !== -1) {
-                kodi.playerSetPlay(this.config, this.log, playerid, on as boolean, (error, result) => {
-                    if (!error && result) {
-                        const speed = result.speed ? result.speed : 0;
-                        if (speed !== 0) {
-                            this.log.debug('Setting ' + this.name + ': ' + on);
-                            callback();
-                        } else {
-                            setTimeout(() => {
-                                this.log.debug('Setting ' + this.name + ': false - Nothing pausable seems to be playing!');
-                                kodi.isPlaying(this.config, this.log, (playing) => {
-                                    this.switchService.getCharacteristic(this.platform.Characteristic.On).updateValue(playing);
-                                });
-                            }, 100);
-                            callback();
-                        }
-                    } else {
-                        setTimeout(() => {
-                            this.log.debug('Setting ' + this.name + ': false - Nothing pausable seems to be playing!');
-                            kodi.isPlaying(this.config, this.log, (playing) => {
-                                this.switchService.getCharacteristic(this.platform.Characteristic.On).updateValue(playing);
-                            });
-                        }, 100);
-                        callback();
-                    }
-                });
-            } else {
-                setTimeout(() => {
-                    this.log.debug('Setting ' + this.name + ': false - Nothing pausable seems to be playing!');
-                    kodi.isPlaying(this.config, this.log, (playing) => {
-                        this.switchService.getCharacteristic(this.platform.Characteristic.On).updateValue(playing);
+            .onGet(async () => {
+                return kodi.isPlaying(this.config)
+                    .then(([playing]) => {
+                        this.log.debug('Getting ' + this.name + ': ' + playing);
+                        return playing;
+                    })
+                    .catch(error => {
+                        this.log.error('Getting ' + this.name + ': - Error: ' + error);
+                        return false;
                     });
-                }, 100);
-                callback();
-            }
-        });
+            })
+            .onSet(async (on) => {
+                kodi.playerGetActivePlayers(this.config)
+                    .then(playerid => {
+                        if (playerid !== null && playerid !== -1) {
+                            kodi.playerSetPlay(this.config, playerid, on as boolean)
+                                .then(result => {
+                                    if (result) {
+                                        const speed = result.speed ? result.speed : 0;
+                                        if (speed !== 0) {
+                                            this.log.debug('Setting ' + this.name + ': ' + on);
+                                        } else {
+                                            this.updateValueToFalse();
+                                        }
+                                    } else {
+                                        this.updateValueToFalse();
+                                    }
+                                })
+                                .catch(error => {
+                                    this.log.error('Setting ' + this.name + ': ' + on + ' - Error: ' + error.message);
+                                    this.updateValueToFalse();
+                                });
+                        } else {
+                            this.updateValueToFalse();
+                        }
+                    })
+                    .catch(error => {
+                        this.log.error('Setting ' + this.name + ': ' + on + ' - Error: ' + error.message);
+                        this.updateValueToFalse();
+                    });
+            });
+    }
+
+    updateValueToFalse() {
+        setTimeout(() => {
+            kodi.isPlaying(this.config)
+                .then(([, playing]) => {
+                    this.log.debug('Setting ' + this.name + ': false - Nothing pausable seems to be playing!');
+                    this.switchService.getCharacteristic(this.platform.api.hap.Characteristic.On).updateValue(playing);
+                })
+                .catch(error => {
+                    this.log.error('Setting ' + this.name + ': false - Nothing pausable seems to be playing! - Error: ' + error.message);
+                });
+        }, 100);
     }
 
 }
@@ -277,56 +300,56 @@ export class PlayerPauseSwitchAccessory extends KodiAccessory {
         this.switchService.setCharacteristic(this.platform.Characteristic.Name, name);
 
         this.switchService.getCharacteristic(this.platform.Characteristic.On)
-            .on(CharacteristicEventTypes.GET, this.getOn.bind(this))
-            .on(CharacteristicEventTypes.SET, this.setOn.bind(this));
-    }
-
-    getOn(callback: CharacteristicGetCallback) {
-        kodi.isPlaying(this.config, this.log, (_, paused) => {
-            callback(null, paused);
-        });
-    }
-
-    setOn(on: CharacteristicValue, callback: CharacteristicSetCallback) {
-        kodi.playerGetActivePlayers(this.config, this.log, (error, playerid) => {
-            if (!error && playerid && playerid !== -1) {
-                kodi.playerGetItem(this.config, this.log, playerid, [], (error, itemresult) => {
-                    if (!error && itemresult && itemresult.item) {
-                        kodi.playerSetPlay(this.config, this.log, playerid, !on, (error, result) => {
-                            if (!error && result) {
-                                const on = result.speed === 0 ? result.speed === 0 : false;
-                                this.log.debug('Setting ' + this.name + ': ' + on);
-                                callback();
-                            } else {
-                                setTimeout(() => {
-                                    this.log.debug('Setting ' + this.name + ': false - Nothing pausable seems to be playing!');
-                                    kodi.isPlaying(this.config, this.log, (_, paused) => {
-                                        this.switchService.getCharacteristic(this.platform.Characteristic.On).updateValue(paused);
-                                    });
-                                }, 100);
-                                callback();
-                            }
-                        });
-                    } else {
-                        setTimeout(() => {
-                            this.log.debug('Setting ' + this.name + ': false - Nothing pausable seems to be playing!');
-                            kodi.isPlaying(this.config, this.log, (_, paused) => {
-                                this.switchService.getCharacteristic(this.platform.Characteristic.On).updateValue(paused);
-                            });
-                        }, 100);
-                        callback();
-                    }
-                });
-            } else {
-                setTimeout(() => {
-                    this.log.debug('Setting ' + this.name + ': false - Nothing pausable seems to be playing!');
-                    kodi.isPlaying(this.config, this.log, (_, paused) => {
-                        this.switchService.getCharacteristic(this.platform.Characteristic.On).updateValue(paused);
+            .onGet(async () => {
+                return kodi.isPlaying(this.config)
+                    .then(([paused]) => {
+                        this.log.debug('Getting ' + this.name + ': ' + paused);
+                        return paused;
+                    })
+                    .catch(error => {
+                        this.log.error('Getting ' + this.name + ': - Error: ' + error);
+                        return false;
                     });
-                }, 100);
-                callback();
-            }
-        });
+            })
+            .onSet(async (on) => {
+                kodi.playerGetActivePlayers(this.config)
+                    .then(playerid => {
+                        if (playerid !== null && playerid !== -1) {
+                            kodi.playerSetPlay(this.config, playerid, !on)
+                                .then(result => {
+                                    if (result) {
+                                        const on = result.speed === 0 ? result.speed === 0 : false;
+                                        this.log.debug('Setting ' + this.name + ': ' + on);
+                                    } else {
+                                        this.updateValueToFalse();
+                                    }
+                                })
+                                .catch(error => {
+                                    this.log.error('Setting ' + this.name + ': ' + on + ' - Error: ' + error.message);
+                                    this.updateValueToFalse();
+                                });
+                        } else {
+                            this.updateValueToFalse();
+                        }
+                    })
+                    .catch(error => {
+                        this.log.error('Setting ' + this.name + ': ' + on + ' - Error: ' + error.message);
+                        this.updateValueToFalse();
+                    });
+            });
+    }
+
+    updateValueToFalse() {
+        setTimeout(() => {
+            kodi.isPlaying(this.config)
+                .then(([, playing]) => {
+                    this.log.debug('Setting ' + this.name + ': false - Nothing pausable seems to be playing!');
+                    this.switchService.getCharacteristic(this.platform.api.hap.Characteristic.On).updateValue(playing);
+                })
+                .catch(error => {
+                    this.log.error('Setting ' + this.name + ': false - Nothing pausable seems to be playing! - Error: ' + error.message);
+                });
+        }, 100);
     }
 
 }
@@ -363,49 +386,40 @@ export class PlayerStopSwitchAccessory extends KodiAccessory {
         this.switchService.setCharacteristic(this.platform.Characteristic.Name, name);
 
         this.switchService.getCharacteristic(this.platform.Characteristic.On)
-            .on(CharacteristicEventTypes.GET, this.getOn.bind(this))
-            .on(CharacteristicEventTypes.SET, this.setOn.bind(this));
-    }
-
-    getOn(callback: CharacteristicGetCallback) {
-        callback(null, false);
-    }
-
-    setOn(on: CharacteristicValue, callback: CharacteristicSetCallback) {
-        if (on) {
-            kodi.playerGetActivePlayers(this.config, this.log, (error, playerid) => {
-                if (!error && playerid && playerid !== -1) {
-                    kodi.playerStop(this.config, this.log, playerid, (error, result) => {
-                        if (!error && result) {
-                            setTimeout(() => {
-                                this.log.debug('Setting ' + this.name + ': false - Stopped!');
-                                this.switchService.getCharacteristic(this.platform.Characteristic.On).updateValue(false);
-                            }, 100);
-                            this.log.debug('Setting ' + this.name + ': ' + on);
-                            callback();
-                        } else {
-                            setTimeout(() => {
-                                this.log.debug('Setting ' + this.name + ': false - Stopped!');
-                                this.switchService.getCharacteristic(this.platform.Characteristic.On).updateValue(false);
-                            }, 100);
-                            callback();
-                        }
-                    });
-                } else {
-                    setTimeout(() => {
-                        this.log.debug('Setting ' + this.name + ': false - Stopped!');
-                        this.switchService.getCharacteristic(this.platform.Characteristic.On).updateValue(false);
-                    }, 100);
-                    callback();
+            .onGet(async () => {
+                return false;
+            })
+            .onSet(async (on) => {
+                if (on) {
+                    kodi.playerGetActivePlayers(this.config)
+                        .then(playerid => {
+                            if (playerid !== null && playerid !== -1) {
+                                kodi.playerStop(this.config, playerid)
+                                    .then(result => {
+                                        if (result) {
+                                            this.log.debug('Setting ' + this.name + ': ' + on);
+                                        } else {
+                                            this.log.debug('Setting ' + this.name + ': ' + on + ' (no result)');
+                                        }
+                                    })
+                                    .catch(error => {
+                                        this.log.error('Setting ' + this.name + ': ' + on + ' - Error: ' + error.message);
+                                    });
+                            }
+                        })
+                        .catch(error => {
+                            this.log.error('Setting ' + this.name + ': ' + on + ' - Error: ' + error.message);
+                        });
                 }
+                this.updateValueToFalse();
             });
-        } else {
-            setTimeout(() => {
-                this.log.debug('Setting ' + this.name + ': false - Stopped!');
-                this.switchService.getCharacteristic(this.platform.Characteristic.On).updateValue(false);
-            }, 100);
-            callback();
-        }
+    }
+
+    updateValueToFalse() {
+        setTimeout(() => {
+            this.log.debug('Setting ' + this.name + ': false - Stopped!');
+            this.switchService.getCharacteristic(this.platform.Characteristic.On).updateValue(false);
+        }, 100);
     }
 
 }

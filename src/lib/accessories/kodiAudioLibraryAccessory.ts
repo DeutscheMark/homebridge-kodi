@@ -2,10 +2,7 @@ import {
     Service,
     PlatformConfig,
     PlatformAccessory,
-    CharacteristicEventTypes,
     CharacteristicValue,
-    CharacteristicGetCallback,
-    CharacteristicSetCallback,
 } from 'homebridge';
 
 import { KodiPlatform, KodiLogger, KodiAccessory } from '../../internal';
@@ -44,47 +41,71 @@ export class AudioLibraryScanSwitchAccessory extends KodiAccessory {
         this.switchService.setCharacteristic(this.platform.Characteristic.Name, name);
 
         this.switchService.getCharacteristic(this.platform.Characteristic.On)
-            .on(CharacteristicEventTypes.GET, this.getOn.bind(this))
-            .on(CharacteristicEventTypes.SET, this.setOn.bind(this));
-    }
-
-    getOn(callback: CharacteristicGetCallback) {
-        kodi.storageGetItem(this.platform.api.user.persistPath(), this.name, (error, on) => {
-            callback(error, on === 'true' ? true : false);
-        });
-    }
-
-    setOn(on: CharacteristicValue, callback: CharacteristicSetCallback) {
-        this.log.debug('Setting ' + this.name + ': ' + on);
-        if (on) {
-            kodi.getActionResult(this.config, this.log, 'AudioLibrary.Scan', { 'showdialogs': true }, (error, ok) => {
-                if (!error && ok) {
-                    kodi.storageSetItem(this.platform.api.user.persistPath(), this.name, 'true', () => {
-                        callback(null);
+            .onGet(async () => {
+                return kodi.getActionResult(this.config, 'XBMC.GetInfoBooleans', { 'booleans': ['Library.IsScanningMusic'] })
+                    .then(([, result]) => {
+                        if (result) {
+                            const isScanning = result['Library.IsScanningMusic'];
+                            this.log.debug('Getting ' + this.name + ': ' + isScanning);
+                            return isScanning;
+                        } else {
+                            return false;
+                        }
+                    })
+                    .catch(error => {
+                        this.log.error('Getting ' + this.name + ' - Error: ' + error.message);
+                        return false;
                     });
+            })
+            .onSet(async (on) => {
+                if (on) {
+                    kodi.getActionResult(this.config, 'AudioLibrary.Scan', { 'showdialogs': true })
+                        .then(ok => {
+                            if (ok) {
+                                this.log.debug('Setting ' + this.name + ': ' + on);
+                            } else {
+                                this.log.debug('Setting ' + this.name + ': ' + on + ' (not ok)');
+                            }
+                        })
+                        .catch(error => {
+                            this.log.error('Setting ' + this.name + ': ' + on + ' - Error: ' + error.message);
+                        });
                 } else {
-                    setTimeout(() => {
-                        this.log.debug('Setting ' + this.name + ': false - Scan did not start!');
-                        this.switchService.getCharacteristic(this.platform.api.hap.Characteristic.On).updateValue(false);
-                    }, 100);
-                    kodi.storageSetItem(this.platform.api.user.persistPath(), this.name, 'false', () => {
-                        callback(error);
-                    });
-                    
+                    this.log.debug('Setting ' + this.name + ': ' + on + ' - A scan can\'t be stopped.');
+                    this.resetToCurrentStatus(on); // Setting to off is not supported by Kodi JSON-RPC
                 }
             });
-        } else {
-            kodi.storageSetItem(this.platform.api.user.persistPath(), this.name, 'false', () => {
-                callback(null);
+    }
+
+    resetToCurrentStatus(on: CharacteristicValue) {
+        kodi.getActionResult(this.config, 'XBMC.GetInfoBooleans', { 'booleans': ['Library.IsScanningMusic'] })
+            .then(([, result]) => {
+                if (result) {
+                    const isScanning = result['Library.IsScanningMusic'];
+                    this.log.debug('Setting ' + this.name + ': ' + isScanning);
+                    this.updateValue(isScanning);
+                } else {
+                    this.log.debug('Setting ' + this.name + ': ' + on + ' (no result)');
+                    this.updateValue(false);
+                }
+            })
+            .catch(error => {
+                this.log.error('Setting ' + this.name + ': ' + on + ' - Error: ' + error.message);
+                this.updateValue(false);
             });
-        }
+    }
+
+    updateValue(on: boolean) {
+        setTimeout(() => {
+            this.switchService.getCharacteristic(this.platform.api.hap.Characteristic.On).updateValue(on);
+        }, 100);
     }
 
 }
 
-// ===================================
+// ====================================
 // = AudioLibraryCleanSwitchAccessory =
-// ===================================
+// ====================================
 
 export class AudioLibraryCleanSwitchAccessory extends KodiAccessory {
 
@@ -113,39 +134,55 @@ export class AudioLibraryCleanSwitchAccessory extends KodiAccessory {
         this.switchService.setCharacteristic(this.platform.Characteristic.Name, name);
 
         this.switchService.getCharacteristic(this.platform.Characteristic.On)
-            .on(CharacteristicEventTypes.GET, this.getOn.bind(this))
-            .on(CharacteristicEventTypes.SET, this.setOn.bind(this));
-    }
-
-    getOn(callback: CharacteristicGetCallback) {
-        kodi.storageGetItem(this.platform.api.user.persistPath(), this.name, (error, on) => {
-            callback(error, on === 'true' ? true : false);
-        });
-    }
-
-    setOn(on: CharacteristicValue, callback: CharacteristicSetCallback) {
-        this.log.debug('Setting ' + this.name + ': ' + on);
-        if (on) {
-            kodi.getActionResult(this.config, this.log, 'AudioLibrary.Clean', { 'showdialogs': true }, (error, ok) => {
-                if (!error && ok) {
-                    kodi.storageSetItem(this.platform.api.user.persistPath(), this.name, 'true', () => {
-                        callback(null);
+            .onGet(async () => {
+                return kodi.storageGetItem(this.platform.api.user.persistPath(), this.name)
+                    .then(on => {
+                        this.log.debug('Getting ' + this.name + ': ' + on);
+                        return on === 'true' ? true : false;
+                    })
+                    .catch(error => {
+                        this.log.error('Getting ' + this.name + ' - Error: ' + error.message);
+                        return false;
                     });
+            })
+            .onSet(async (on) => {
+                if (on) {
+                    // TODO: This takes as long as the clean and produces Timeout-Errors because of that. Should be more async!
+                    kodi.getActionResult(this.config, 'AudioLibrary.Clean', { 'showdialogs': true })
+                        .then(([ok, result]) => {
+                            if (ok && result) {
+                                this.persistStatus(true);
+                            } else {
+                                this.log.debug('Setting ' + this.name + ': ' + on + ' - Clean did not start!');
+                                this.updateValueAndPersist(false);
+                            }
+                        })
+                        .catch(error => {
+                            this.log.error('Setting ' + this.name + ': ' + on + ' - Error: ' + error.message);
+                            this.updateValueAndPersist(false);
+                        });
                 } else {
-                    setTimeout(() => {
-                        this.log.debug('Setting ' + this.name + ': false - Clean did not start!');
-                        this.switchService.getCharacteristic(this.platform.api.hap.Characteristic.On).updateValue(false);
-                    }, 100);
-                    kodi.storageSetItem(this.platform.api.user.persistPath(), this.name, 'false', () => {
-                        callback(error);
-                    });
+                    this.log.debug('Setting ' + this.name + ': ' + on + ' - A clean can\'t be stopped.');
+                    this.persistStatus(false); // Setting to off is not supported by Kodi JSON-RPC
                 }
             });
-        } else {
-            kodi.storageSetItem(this.platform.api.user.persistPath(), this.name, 'false', () => {
-                callback(null);
+    }
+
+    updateValueAndPersist(on: boolean) {
+        setTimeout(() => {
+            this.switchService.getCharacteristic(this.platform.api.hap.Characteristic.On).updateValue(on);
+        }, 100);
+        this.persistStatus(on);
+    }
+
+    persistStatus(status: boolean) {
+        kodi.storageSetItem(this.platform.api.user.persistPath(), this.name, status ? 'true' : 'false')
+            .then(() => {
+                this.log.debug('Setting ' + this.name + ': ' + status + ' - Status is persisted!');
+            })
+            .catch(error => {
+                this.log.error('Setting ' + this.name + ': ' + status + ' - Error: ' + error.message);
             });
-        }
     }
 
 }

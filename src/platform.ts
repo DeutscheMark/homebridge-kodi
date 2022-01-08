@@ -9,6 +9,7 @@ import {
     KodiTelevisionAccessoryInterface,
     KodiCommandSwitchAccessoryInterface,
     TelevisionAccessory,
+    PowerSwitchAccessory,
     PlayerLightbulbAccessory,
     PlayerPlaySwitchAccessory,
     PlayerPauseSwitchAccessory,
@@ -22,15 +23,15 @@ import {
 } from './internal';
 
 import kodi = require('./lib/kodi');
+import utils = require('./util/utils');
 import Characteristics from './lib/characteristics';
 
 import WebSockets = require('rpc-websockets');
 const WebSocket = WebSockets.Client;
 
-/* eslint-disable */
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import setIntervalPlus = require('setinterval-plus');
-/* eslint-enable */
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const packageJSON = require('../package.json');
@@ -47,9 +48,14 @@ export class KodiPlatform implements DynamicPlatformPlugin {
     public readonly accessories: PlatformAccessory[] = [];
     public readonly shownAccessories: PlatformAccessory[] = [];
 
-    public intervalSubscriptionsKodiPlayer: setIntervalPlus;
-    public intervalUpdateKodiPlayer: setIntervalPlus;
+    public subscribed = false;
+    public closedByPlugin = false;
 
+    public intervalKodiSubscriptions: setIntervalPlus;
+    public intervalKodiStatus: setIntervalPlus;
+    public intervalKodiUpdate: setIntervalPlus;
+
+    public powerSwitchService: Service | undefined;
     public televisionControlsService: Service | undefined;
     public televisionControlsSpeakerService: Service | undefined;
     public televisionChannelsService: Service | undefined;
@@ -91,31 +97,33 @@ export class KodiPlatform implements DynamicPlatformPlugin {
     discoverDevices() {
         this.log.info('Init Homebridge-Kodi');
 
-        const platformname = (this.config.name && this.config.name.length !== 0) ? this.config.name :'Kodi';
-        const polling = this.config.polling || 10;
-        const retrytime = this.config.retrytime || 30;
-        const tvConfig = this.config.television && this.config.television.controls || false;
-        const tvMenuItemsConfig = this.config.television && this.config.television.controls.menuitems || [];
-        const tvChannelsConfig = this.config.television && this.config.television.tv && this.config.television.tv.channels || false;
-        const tvChannelsChannelsConfig = this.config.television && this.config.television.tv && this.config.television.tv.channels || [];
-        const playerMainConfig = this.config.player && this.config.player.main;
-        const playerPlayConfig = this.config.player && this.config.player.play || false;
-        const playerPauseConfig = this.config.player && this.config.player.pause || false;
-        const playerStopConfig = this.config.player && this.config.player.stop || false;
-        const applicationVolumeConfig = this.config.application && this.config.application.volume || false;
-        const videoLibraryScanConfig = this.config.videolibrary && this.config.videolibrary.scan || false;
-        const videoLibraryCleanConfig = this.config.videolibrary && this.config.videolibrary.clean || false;
-        const audioLibraryScanConfig = this.config.audiolibrary && this.config.audiolibrary.scan || false;
-        const audioLibraryCleanConfig = this.config.audiolibrary && this.config.audiolibrary.clean || false;
-        const commandsConfig = this.config.commands || [];
+        const platformname = utils.checkStringConfig(this.config.name, 'Kodi');
+        const polling = utils.checkNumberConfig(this.config.polling, 10);
+        const retrytime = utils.checkNumberConfig(this.config.retrytime, 30);
+        const powerSwitchConfig = this.config.power && utils.checkBooleanConfig(this.config.power.switch, true);
+        const tvControlConfig = this.config.television && utils.checkConfig(this.config.television.controls, false);
+        const tvControlMenuItemsConfig = tvControlConfig && utils.checkStringArrayConfig(this.config.television.controls.menuitems, []);
+        const tvChannelsConfig = this.config.television && utils.checkConfig(this.config.television.tv, false);
+        const tvChannelsChannelsConfig = tvChannelsConfig && utils.checkStringArrayConfig(this.config.television.tv.channels, []);
+        const playerMainConfig = this.config.player && utils.checkBooleanConfig(this.config.player.main, true);
+        const playerPlayConfig = this.config.player && utils.checkBooleanConfig(this.config.player.play, false);
+        const playerPauseConfig = this.config.player && utils.checkBooleanConfig(this.config.player.pause, false);
+        const playerStopConfig = this.config.player && utils.checkBooleanConfig(this.config.player.stop, false);
+        const applicationVolumeConfig = this.config.application && utils.checkBooleanConfig(this.config.application.volume, false);
+        const videoLibraryScanConfig = this.config.videolibrary && utils.checkBooleanConfig(this.config.videolibrary.scan, false);
+        const videoLibraryCleanConfig = this.config.videolibrary && utils.checkBooleanConfig(this.config.videolibrary.clean, false);
+        const audioLibraryScanConfig = this.config.audiolibrary && utils.checkBooleanConfig(this.config.audiolibrary.scan, false);
+        const audioLibraryCleanConfig = this.config.audiolibrary && utils.checkBooleanConfig(this.config.audiolibrary.clean, false);
+        const commandsConfig = utils.checkArrayConfig(this.config.commands, []);
 
+        this.powerSwitchService = this.addAccessory(platformname + ' Power', powerSwitchConfig, PowerSwitchAccessory)?.getService(this.Service.Switch);
         let name = platformname + ' Controls';
-        if (tvConfig) {
+        if (tvControlConfig) {
             this.log.info('Adding ' + name);
             const inputNames: string[] = [];
             const inputIdentifiers: number[] = [];
-            for (let index = 0; index < tvMenuItemsConfig.length; index++) {
-                let inputName = tvMenuItemsConfig[index];
+            for (let index = 0; index < tvControlMenuItemsConfig.length; index++) {
+                let inputName = tvControlMenuItemsConfig[index];
                 let inputIdentifier;
                 switch (inputName) {
                     case 'home':
@@ -250,60 +258,73 @@ export class KodiPlatform implements DynamicPlatformPlugin {
 
         // Kodi Version
 
-        kodi.applicationGetProperties(this.config, this.log, ['version'], (error, result) => {
-            if (!error) {
+        kodi.applicationGetProperties(this.config, ['version'])
+            .then(result => {
                 if (result && result.version && result.version.major && result.version.minor) {
                     this.log.info('Kodi Version: ' + result.version.major + '.' + result.version.minor);
                 }
-            } else {
+            })
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            .catch(_ => {
                 this.log.info('Kodi Version: Kodi does not seem to be running');
-            }
-        });
+            });
 
         // Reset all services on start
 
-        this.resetAllServices(this.api, true);
+        this.resetAllServices(true);
 
         // Check volume on start
 
-        this.updateApplicationVolumeService.bind(this, this.api);
+        this.updateApplicationVolumeService();
+
+        // Kodi Status
+
+        this.intervalKodiStatus = new setIntervalPlus(this.checkKodiStatus.bind(this), retrytime * 1000);
 
         // Kodi Notifications
 
-        this.log.debug('Starting Subscription to Kodi Notifications');
-        this.kodiNotificationsSubscription.bind(this, this.api);
-        this.intervalSubscriptionsKodiPlayer = new setIntervalPlus(this.kodiNotificationsSubscription.bind(this, this.api), retrytime * 1000);
+        this.log.debug('Start subscribing to Kodi Notifications');
+        this.subscribeToKodiNotifications(this.api);
+        this.intervalKodiSubscriptions = new setIntervalPlus(this.subscribeToKodiNotifications.bind(this, this.api), retrytime * 1000);
 
         // Intervalled Updating Start
 
-        this.log.debug('Starting Updating Kodi with polling: ' + polling + ' seconds');
-        this.updateKodiPlayer(this.api, false);
-        this.intervalUpdateKodiPlayer = new setIntervalPlus(this.updateKodiPlayer.bind(this, this.api, false), (polling !== 0 ? polling : 10) * 1000);
+        this.log.debug('Start Updating Kodi with polling: ' + polling + ' seconds');
+        this.updateKodiPlayer(false);
+        this.intervalKodiUpdate = new setIntervalPlus(this.updateKodiPlayer.bind(this, false), (polling !== 0 ? polling : 10) * 1000);
 
         // Start Updates when currently playing
 
-        kodi.isPlaying(this.config, this.log, (playing, paused) => {
-            if (playing) {
-                kodi.tvIsPlaying(this.config, this.log, (tvplaying) => {
-                    this.televisionChannelsService?.getCharacteristic(this.api.hap.Characteristic.Active).updateValue(tvplaying);
-                });
-                this.playerLightbulbService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(true);
-                this.playerPlaySwitchService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(true);
-                this.playerPauseSwitchService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
-                this.updateKodiPlayer(this.api, false);
-                this.intervalUpdateKodiPlayer.start();
-            } else if (paused) {
-                this.playerLightbulbService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
-                this.playerPlaySwitchService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
-                this.playerPauseSwitchService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(true);
-                this.intervalUpdateKodiPlayer.stop();
-            } else {
-                this.playerLightbulbService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
-                this.playerPlaySwitchService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
-                this.playerPauseSwitchService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
-                this.intervalUpdateKodiPlayer.stop();
-            }
-        });
+        kodi.isPlaying(this.config)
+            .then(([playing, paused]) => {
+                if (playing) {
+                    kodi.tvIsPlaying(this.config)
+                        .then(tvisplaying => {
+                            this.televisionChannelsService?.getCharacteristic(this.api.hap.Characteristic.Active).updateValue(tvisplaying);
+                        })
+                        .catch(error => {
+                            this.log.error('Error getting tv playing status: ' + error.message);
+                        });
+                    this.playerLightbulbService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(true);
+                    this.playerPlaySwitchService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(true);
+                    this.playerPauseSwitchService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
+                    this.updateKodiPlayer(false);
+                    this.intervalKodiUpdate.start();
+                } else if (paused) {
+                    this.playerLightbulbService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
+                    this.playerPlaySwitchService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
+                    this.playerPauseSwitchService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(true);
+                    this.intervalKodiUpdate.stop();
+                } else {
+                    this.playerLightbulbService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
+                    this.playerPlaySwitchService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
+                    this.playerPauseSwitchService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
+                    this.intervalKodiUpdate.stop();
+                }
+            })
+            .catch(error => {
+                this.log.error('Error getting playing status: ' + error.message);
+            });
     }
 
     addAccessory(name: string, configCheck: boolean, KodiAccessory: KodiSwitchAccessoryInterface): PlatformAccessory | undefined {
@@ -383,359 +404,457 @@ export class KodiPlatform implements DynamicPlatformPlugin {
         }
     }
 
-    kodiNotificationsSubscription = async function (this: KodiPlatform, api: API) {
-        kodi.getStatus(this.config, (error, status) => {
-            if (!error && status) {
-                const ws = new WebSocket('ws://' + this.config.host + ':9090/jsonrpc');
-                ws.on('open', () => {
-                    const subscriptions = [
-                        'System.OnSleep',
-                        'System.OnWake',
-                        'System.OnQuit',
-                        'System.OnRestart',
-                        'Application.OnVolumeChanged',
-                        'Player.OnPlay',
-                        'Player.OnResume',
-                        'Player.OnPause',
-                        'Player.OnStop',
-                        'Player.OnSeek',
-                        'Player.OnSpeedChanged',
-                        'VideoLibrary.OnScanStarted',
-                        'VideoLibrary.OnScanFinished',
-                        'VideoLibrary.OnCleanStarted',
-                        'VideoLibrary.OnCleanFinished',
-                        'AudioLibrary.OnScanStarted',
-                        'AudioLibrary.OnScanFinished',
-                        'AudioLibrary.OnCleanStarted',
-                        'AudioLibrary.OnCleanFinished',
-                    ];
-                    // Always throws 'Method not found' warning after successfully subscribing?!
-                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                    ws.subscribe(subscriptions).catch(_ => {
-                        // this.log.error('Subscription Error: ', error);
-                        this.televisionControlsService?.getCharacteristic(api.hap.Characteristic.Active).updateValue(true);
-                        this.updateApplicationVolumeService.bind(this, api);
-                        this.updateTelevisionChannelsService.bind(this, api);
-                        this.intervalSubscriptionsKodiPlayer.stop();
-                        this.log.debug('Kodi Notifications: Subscribed successfully');
-                    });
-                    // System.OnSleep
-                    ws.on('System.OnSleep', () => {
-                        this.log.debug('Notification Received: System.OnSleep');
-                        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                        ws.unsubscribe(subscriptions).catch(_ => {
-                            this.televisionControlsService?.getCharacteristic(api.hap.Characteristic.Active).updateValue(false);
-                            this.televisionChannelsService?.getCharacteristic(api.hap.Characteristic.Active).updateValue(false);
-                            this.applicationVolumeLightbulbService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
-                            this.applicationVolumeLightbulbService?.getCharacteristic(api.hap.Characteristic.Brightness).updateValue(0);
-                            this.intervalSubscriptionsKodiPlayer.start();
-                            this.log.debug('Kodi Notifications: Unsubscribed successfully');
-                        });
-                        this.resetAllServices(api, true);
-                    });
-                    // System.OnWake
-                    ws.on('System.OnWake', () => {
-                        this.log.debug('Notification Received: System.OnWake');
-                        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                        ws.subscribe(subscriptions).catch(_ => {
-                            // this.log.error('Subscription Error: ' + error); // Always throws 'Method not found' warning after successfully subscribing?!
-                            this.televisionControlsService?.getCharacteristic(api.hap.Characteristic.Active).updateValue(true);
-                            this.updateApplicationVolumeService.bind(this, api);
-                            this.updateTelevisionChannelsService.bind(this, api);
-                            this.intervalSubscriptionsKodiPlayer.stop();
-                            this.log.debug('Kodi Notifications: Subscribed successfully');
-                        });
-                    });
-                    // System.OnQuit
-                    ws.on('System.OnQuit', () => {
-                        this.log.debug('Notification Received: System.OnQuit');
-                        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                        ws.unsubscribe(subscriptions).catch(_ => {
-                            this.televisionControlsService?.getCharacteristic(api.hap.Characteristic.Active).updateValue(false);
-                            this.televisionChannelsService?.getCharacteristic(api.hap.Characteristic.Active).updateValue(false);
-                            this.applicationVolumeLightbulbService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
-                            this.applicationVolumeLightbulbService?.getCharacteristic(api.hap.Characteristic.Brightness).updateValue(0);
-                            this.intervalSubscriptionsKodiPlayer.start();
-                            this.log.debug('Kodi Notifications: Unsubscribed successfully');
-                        });
-                        this.resetAllServices(api, true);
-                    });
-                    // System.OnRestart
-                    ws.on('System.OnRestart', () => {
-                        this.log.debug('Notification Received: System.OnRestart');
-                        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                        ws.unsubscribe(subscriptions).catch(_ => {
-                            this.televisionControlsService?.getCharacteristic(api.hap.Characteristic.Active).updateValue(false);
-                            this.televisionChannelsService?.getCharacteristic(api.hap.Characteristic.Active).updateValue(false);
-                            this.applicationVolumeLightbulbService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
-                            this.applicationVolumeLightbulbService?.getCharacteristic(api.hap.Characteristic.Brightness).updateValue(0);
-                            this.intervalSubscriptionsKodiPlayer.start();
-                            this.log.debug('Kodi Notifications: Unsubscribed successfully');
-                        });
-                        this.resetAllServices(api, true);
-                    });
-                    // Player.OnVolumeChanged
-                    ws.on('Application.OnVolumeChanged', () => {
-                        this.log.debug('Notification Received: Application.OnVolumeChanged');
-                        kodi.applicationGetProperties(this.config, this.log, ['muted', 'volume'], (error, result) => {
-                            if (!error && result) {
-                                const muted = result.muted ? result.muted : false;
-                                const volume = result.volume ? result.volume : 0;
-                                this.applicationVolumeLightbulbService?.getCharacteristic(api.hap.Characteristic.On).updateValue(!muted && volume !== 0);
-                                this.applicationVolumeLightbulbService?.getCharacteristic(api.hap.Characteristic.Brightness).updateValue(volume);
-                            }
-                        });
-                    });
-                    // Player.OnPlay
-                    ws.on('Player.OnPlay', () => {
-                        this.log.debug('Notification Received: Player.OnPlay');
-                        this.playerLightbulbService?.getCharacteristic(api.hap.Characteristic.On).updateValue(true);
-                        this.playerPlaySwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(true);
-                        this.playerPauseSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
-                        this.updateTelevisionChannelsService.bind(this, api);
-                        this.updateKodiPlayer(api, true);
-                        this.intervalUpdateKodiPlayer.start();
-                    });
-                    // Player.OnResume
-                    ws.on('Player.OnResume', () => {
-                        this.log.debug('Notification Received: Player.OnResume');
-                        this.playerLightbulbService?.getCharacteristic(api.hap.Characteristic.On).updateValue(true);
-                        this.playerPlaySwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(true);
-                        this.playerPauseSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
-                        this.updateTelevisionChannelsService.bind(this, api);
-                        this.updateKodiPlayer(api, false);
-                        this.intervalUpdateKodiPlayer.start();
-                    });
-                    // Player.OnPause
-                    ws.on('Player.OnPause', () => {
-                        this.log.debug('Notification Received: Player.OnPause');
-                        this.playerLightbulbService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
-                        this.playerPlaySwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
-                        this.playerPauseSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(true);
-                        this.updateTelevisionChannelsService.bind(this, api);
-                        this.intervalUpdateKodiPlayer.stop();
-                    });
-                    // Player.OnStop
-                    ws.on('Player.OnStop', () => {
-                        this.log.debug('Notification Received: Player.OnStop');
-                        this.televisionChannelsService?.getCharacteristic(api.hap.Characteristic.Active).updateValue(false);
-                        this.playerLightbulbService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
-                        this.playerPlaySwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
-                        this.playerPauseSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
-                        this.intervalUpdateKodiPlayer.stop();
-                        this.resetAllServices(api, false);
-                    });
-                    // Player.OnSeek
-                    ws.on('Player.OnSeek', () => {
-                        this.log.debug('Notification Received: Player.OnSeek');
-                        kodi.playerGetActivePlayers(this.config, this.log, (error, playerid) => {
-                            if (!error && playerid && playerid !== -1) {
-                                kodi.playerGetProperties(this.config, this.log, playerid, ['percentage'], (error, result) => {
-                                    if (!error && result) {
-                                        this.playerLightbulbService?.getCharacteristic(api.hap.Characteristic.Brightness).updateValue(Math.round(result.percentage));
-                                    }
+    checkKodiStatus = async function (this: KodiPlatform) {
+        kodi.getStatus(this.config)
+            .then(status => {
+                if (status) {
+                    if (!this.closedByPlugin) {
+                        this.log.debug('Kodi is up and running - Check again in ' + (this.config.retrytime || 30) + ' seconds');
+                        this.powerSwitchService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(true);
+                        this.televisionControlsService?.getCharacteristic(this.api.hap.Characteristic.Active).updateValue(true);
+                    } else {
+                        this.log.warn('Kodi was closed by the plugin, but is still running. ' +
+                            'If Kodi is still running please check your power off command. If not check if the Kodi process is unresponsive and/or still in the memory.');
+                        this.intervalKodiSubscriptions.stop();
+                        this.resetAllServices(true);
+                    }
+                } else {
+                    this.log.debug('Kodi is not running! - Retry in ' + (this.config.retrytime || 30) + ' seconds');
+                    this.powerSwitchService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
+                    this.televisionControlsService?.getCharacteristic(this.api.hap.Characteristic.Active).updateValue(false);
+                    this.televisionChannelsService?.getCharacteristic(this.api.hap.Characteristic.Active).updateValue(false);
+                    this.applicationVolumeLightbulbService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
+                    this.applicationVolumeLightbulbService?.getCharacteristic(this.api.hap.Characteristic.Brightness).updateValue(0);
+                    this.intervalKodiSubscriptions.start();
+                    this.resetAllServices(true);
+                    this.closedByPlugin = false;
+                }
+            })
+            .catch(error => {
+                this.log.error('Kodi Check Status: ' + error.message);
+            });
+    }
+
+    subscribeToKodiNotifications = async function (this: KodiPlatform, api: API) {
+        if (!this.subscribed) {
+            kodi.getStatus(this.config)
+                .then(status => {
+                    if (status) {
+                        const ws = new WebSocket('ws://' + (this.config.host || 'localhost') + ':9090/jsonrpc');
+                        ws.on('open', () => {
+                            const subscriptions = [
+                                'System.OnSleep',
+                                'System.OnWake',
+                                'System.OnQuit',
+                                'System.OnRestart',
+                                'Application.OnVolumeChanged',
+                                'Player.OnPlay',
+                                'Player.OnResume',
+                                'Player.OnPause',
+                                'Player.OnStop',
+                                'Player.OnSeek',
+                                'Player.OnSpeedChanged',
+                                'VideoLibrary.OnScanStarted',
+                                'VideoLibrary.OnScanFinished',
+                                'VideoLibrary.OnCleanStarted',
+                                'VideoLibrary.OnCleanFinished',
+                                'AudioLibrary.OnScanStarted',
+                                'AudioLibrary.OnScanFinished',
+                                'AudioLibrary.OnCleanStarted',
+                                'AudioLibrary.OnCleanFinished',
+                            ];
+                            // Always throws 'Method not found' warning after successfully subscribing?!
+                            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                            ws.subscribe(subscriptions).catch(_ => {
+                                this.onSubscribe();
+                            });
+                            // System.OnSleep
+                            ws.on('System.OnSleep', () => {
+                                this.log.debug('Notification Received: System.OnSleep');
+                                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                                ws.unsubscribe(subscriptions).catch(_ => {
+                                    this.onUnsubscribe();
                                 });
-                            }
-                        });
-                    });
-                    // Player.OnSpeedChanged
-                    ws.on('Player.OnSpeedChanged', () => {
-                        this.log.debug('Notification Received: Application.OnSpeedChanged');
-                        kodi.isPlaying(this.config, this.log, (playing, paused) => {
-                            if (playing) {
-                                this.intervalUpdateKodiPlayer.start();
+                                this.resetAllServices(true);
+                            });
+                            // System.OnWake
+                            ws.on('System.OnWake', () => {
+                                this.log.debug('Notification Received: System.OnWake');
+                                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                                ws.subscribe(subscriptions).catch(_ => {
+                                    this.onSubscribe();
+                                });
+                            });
+                            // System.OnQuit
+                            ws.on('System.OnQuit', () => {
+                                this.log.debug('Notification Received: System.OnQuit');
+                                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                                ws.unsubscribe(subscriptions).catch(_ => {
+                                    this.onUnsubscribe();
+                                });
+                                this.resetAllServices(true);
+                            });
+                            // System.OnRestart
+                            ws.on('System.OnRestart', () => {
+                                this.log.debug('Notification Received: System.OnRestart');
+                                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                                ws.unsubscribe(subscriptions).catch(_ => {
+                                    this.onUnsubscribe();
+                                });
+                                this.resetAllServices(true);
+                            });
+                            // Player.OnVolumeChanged
+                            ws.on('Application.OnVolumeChanged', () => {
+                                this.log.debug('Notification Received: Application.OnVolumeChanged');
+                                kodi.applicationGetProperties(this.config, ['muted', 'volume'])
+                                    .then(result => {
+                                        if (result) {
+                                            const muted = result.muted ? result.muted : false;
+                                            const volume = result.volume ? result.volume : 0;
+                                            this.applicationVolumeLightbulbService?.getCharacteristic(api.hap.Characteristic.On).updateValue(!muted && volume !== 0);
+                                            this.applicationVolumeLightbulbService?.getCharacteristic(api.hap.Characteristic.Brightness).updateValue(volume);
+                                        } else {
+                                            this.log.error('Error getting properties: no result');
+                                        }
+                                    })
+                                    .catch(error => {
+                                        this.log.error('Error getting properties: ' + error.message);
+                                    });
+                            });
+                            // Player.OnPlay
+                            ws.on('Player.OnPlay', () => {
+                                this.log.debug('Notification Received: Player.OnPlay');
                                 this.playerLightbulbService?.getCharacteristic(api.hap.Characteristic.On).updateValue(true);
                                 this.playerPlaySwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(true);
                                 this.playerPauseSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
-                            } else if (paused) {
-                                this.intervalUpdateKodiPlayer.stop();
+                                this.updateTelevisionChannelsService();
+                                this.updateKodiPlayer(true);
+                                this.intervalKodiUpdate.start();
+                            });
+                            // Player.OnResume
+                            ws.on('Player.OnResume', () => {
+                                this.log.debug('Notification Received: Player.OnResume');
+                                this.playerLightbulbService?.getCharacteristic(api.hap.Characteristic.On).updateValue(true);
+                                this.playerPlaySwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(true);
+                                this.playerPauseSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
+                                this.updateTelevisionChannelsService();
+                                this.updateKodiPlayer(false);
+                                this.intervalKodiUpdate.start();
+                            });
+                            // Player.OnPause
+                            ws.on('Player.OnPause', () => {
+                                this.log.debug('Notification Received: Player.OnPause');
                                 this.playerLightbulbService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
                                 this.playerPlaySwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
                                 this.playerPauseSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(true);
-                            } else {
-                                this.intervalUpdateKodiPlayer.stop();
-                                this.resetAllServices(api, false);
-                            }
-                        });
-                    });
-                    // VideoLibrary.OnScanStarted
-                    ws.on('VideoLibrary.OnScanStarted', () => {
-                        this.log.debug('Notification Received: VideoLibrary.OnScanStarted');
-                        kodi.storageSetItem(api.user.persistPath(), this.videoLibraryScanSwitchService?.name, 'true', () => {
-                            this.videoLibraryScanSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(true);
-                        });
-                    });
-                    // VideoLibrary.OnScanFinished
-                    ws.on('VideoLibrary.OnScanFinished', () => {
-                        this.log.debug('Notification Received: VideoLibrary.OnScanFinished');
-                        kodi.storageSetItem(api.user.persistPath(), this.videoLibraryScanSwitchService?.name, 'true', () => {
-                            this.videoLibraryScanSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
-                        });
-                    });
-                    // VideoLibrary.OnCleanStarted
-                    ws.on('VideoLibrary.OnCleanStarted', () => {
-                        this.log.debug('Notification Received: VideoLibrary.OnCleanStarted');
-                        kodi.storageSetItem(api.user.persistPath(), this.videoLibraryCleanSwitchService?.name, 'true', () => {
-                            this.videoLibraryCleanSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(true);
-                        });
-                    });
-                    // VideoLibrary.OnCleanFinished
-                    ws.on('VideoLibrary.OnCleanFinished', () => {
-                        this.log.debug('Notification Received: VideoLibrary.OnCleanFinished');
-                        kodi.storageSetItem(api.user.persistPath(), this.videoLibraryCleanSwitchService?.name, 'true', () => {
-                            this.videoLibraryCleanSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
-                        });
-                    });
-                    // AudioLibrary.OnScanStarted
-                    ws.on('AudioLibrary.OnScanStarted', () => {
-                        this.log.debug('Notification Received: AudioLibrary.OnScanStarted');
-                        kodi.storageSetItem(api.user.persistPath(), this.audioLibraryScanSwitchService?.name, 'true', () => {
-                            this.audioLibraryScanSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(true);
-                        });
-                    });
-                    // AudioLibrary.OnScanFinished
-                    ws.on('AudioLibrary.OnScanFinished', () => {
-                        this.log.debug('Notification Received: AudioLibrary.OnScanFinished');
-                        kodi.storageSetItem(api.user.persistPath(), this.audioLibraryScanSwitchService?.name, 'true', () => {
-                            this.audioLibraryScanSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
-                        });
-                    });
-                    // AudioLibrary.OnCleanStarted
-                    ws.on('AudioLibrary.OnCleanStarted', () => {
-                        this.log.debug('Notification Received: AudioLibrary.OnCleanStarted');
-                        kodi.storageSetItem(api.user.persistPath(), this.audioLibraryCleanSwitchService?.name, 'true', () => {
-                            this.audioLibraryCleanSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(true);
-                        });
-                    });
-                    // AudioLibrary.OnCleanFinished
-                    ws.on('AudioLibrary.OnCleanFinished', () => {
-                        this.log.debug('Notification Received: AudioLibrary.OnCleanFinished');
-                        kodi.storageSetItem(api.user.persistPath(), this.audioLibraryCleanSwitchService?.name, 'false', () => {
-                            this.audioLibraryCleanSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
-                        });
-                    });
-                });
-            } else {
-                this.log.debug('Kodi Notifications: Kodi does not seem to be running - Retry in ' + this.config.retrytime + ' seconds');
-            }
-        });
-    }
-
-    updateKodiPlayer = async function (this: KodiPlatform, api: API, onplay: boolean) {
-        kodi.playerGetActivePlayers(this.config, this.log, (error, playerid) => {
-            if (!error && playerid !== -1) {
-                kodi.playerGetItem(this.config, this.log, playerid as number, ['artist', 'album', 'showtitle', 'season', 'episode', 'duration'], (error, itemresult) => {
-                    if (!error && itemresult && itemresult.item) {
-                        let artist = '-';
-                        if (itemresult.item.artist) {
-                            for (let i = 0; i < itemresult.item.artist.length; i++) {
-                                if (artist === '-') {
-                                    artist = itemresult.item.artist[i];
-                                }
-                                artist += itemresult.item.artist[i];
-                                if (i !== itemresult.item.artist.length - 1) {
-                                    artist += ', ';
-                                }
-                            }
-                        }
-                        const album = typeof itemresult.item.album !== 'undefined' && itemresult.item.album !== '' ? itemresult.item.album : '-';
-                        const itemtype = typeof itemresult.item.type !== 'undefined' && itemresult.item.type !== '' ? itemresult.item.type : '-';
-                        const title = typeof itemresult.item.label !== 'undefined' && itemresult.item.label !== '' ? itemresult.item.label : '-';
-                        const showtitle = typeof itemresult.item.showtitle !== 'undefined' && itemresult.item.showtitle !== '' ? itemresult.item.showtitle : '-';
-                        let seasonEpisode = '-';
-                        if (itemtype === 'episode') {
-                            if ((itemresult.item.season !== -1 && itemresult.item.episode !== -1) ||
-                                (typeof itemresult.item.season !== 'undefined' && typeof itemresult.item.episode !== 'undefined')) {
-                                seasonEpisode = 'S' + itemresult.item.season.toString().padStart(2, '0') + 'E' + itemresult.item.episode.toString().padStart(2, '0');
-                            } else if ((itemresult.item.season === -1 && itemresult.item.episode !== -1) ||
-                                (typeof itemresult.item.season === 'undefined' && typeof itemresult.item.episode !== 'undefined')) {
-                                seasonEpisode = 'E' + itemresult.item.episode.toString().padStart(2, '0');
-                            }
-                        }
-
-                        this.playerLightbulbService?.updateCharacteristic(this.customCharacteristics.Type, itemtype);
-                        this.playerLightbulbService?.updateCharacteristic(this.customCharacteristics.Title, title);
-                        this.playerLightbulbService?.updateCharacteristic(this.customCharacteristics.ShowTitle, showtitle);
-                        this.playerLightbulbService?.updateCharacteristic(this.customCharacteristics.SeasonEpisode, seasonEpisode);
-                        this.playerLightbulbService?.updateCharacteristic(this.customCharacteristics.Artist, artist);
-                        this.playerLightbulbService?.updateCharacteristic(this.customCharacteristics.Album, album);
-                        kodi.playerGetProperties(this.config, this.log, playerid as number, ['speed', 'percentage', 'time', 'totaltime'], (error, result) => {
-                            if (!error && result) {
-                                const speed = result.speed !== 0 ? result.speed !== 0 : 0;
-                                let percentage = Math.round(result.percentage ? result.percentage : 0);
-                                let timeAndTotaltime = result.time.hours + ':' +
-                                    result.time.minutes.toString().padStart(2, '0') + ':' +
-                                    result.time.seconds.toString().padStart(2, '0') + ' / ' +
-                                    result.totaltime.hours + ':' +
-                                    result.totaltime.minutes.toString().padStart(2, '0') + ':' +
-                                    result.totaltime.seconds.toString().padStart(2, '0');
-                                if (timeAndTotaltime === '0:00:00 / 0:00:00') {
-                                    timeAndTotaltime = '-';
-                                }
-                                if (percentage === 0 && timeAndTotaltime === '-') {
-                                    percentage = 100;
-                                }
-                                this.playerLightbulbService?.getCharacteristic(api.hap.Characteristic.On).updateValue(speed);
-                                this.playerLightbulbService?.getCharacteristic(api.hap.Characteristic.Brightness).updateValue(Math.round(percentage));
-                                this.playerPlaySwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(speed);
-                                this.playerPauseSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(!speed);
-                                this.playerLightbulbService?.setCharacteristic(this.customCharacteristics.Position, timeAndTotaltime);
-                                let activeIdentifier = -1;
-                                const tvChannelsChannelsConfig = this.config.television && this.config.television.tv && this.config.television.tv.channels || [];
-                                switch (itemtype) {
-                                    case 'movie':
-                                        this.log.debug('Setting Info (' + itemtype + '): "' + title + '" - ' + timeAndTotaltime + ' (' + percentage + ' %)');
-                                        break;
-                                    case 'episode':
-                                        this.log.debug('Setting Info (' + itemtype + '): ' + showtitle + ' ' + seasonEpisode + ' "' + title + '" - ' +
-                                            timeAndTotaltime + ' (' + percentage + ' %)');
-                                        break;
-                                    case 'song':
-                                        this.log.debug('Setting Info (' + itemtype + '): ' + artist + ' "' + title + '" (' + album + ') - ' +
-                                            timeAndTotaltime + ' (' + percentage + ' %)');
-                                        break;
-                                    case 'unknown':
-                                        this.log.debug('Setting Info (' + itemtype + '): "' + title + '" - ' + timeAndTotaltime + ' (' + percentage + ' %)');
-                                        break;
-                                    case 'channel':
-                                        this.televisionChannelsService?.getCharacteristic(api.hap.Characteristic.Active).updateValue(true);
-                                        for (let index = 0; index < tvChannelsChannelsConfig.length; index++) {
-                                            if (title === tvChannelsChannelsConfig[index]) {
-                                                activeIdentifier = index + 1;
-                                            }
-                                        }
-                                        if (activeIdentifier && activeIdentifier !== -1) {
-                                            this.televisionChannelsService?.getCharacteristic(api.hap.Characteristic.ActiveIdentifier).updateValue(activeIdentifier);
+                                this.updateTelevisionChannelsService();
+                                this.intervalKodiUpdate.stop();
+                            });
+                            // Player.OnStop
+                            ws.on('Player.OnStop', () => {
+                                this.log.debug('Notification Received: Player.OnStop');
+                                this.televisionChannelsService?.getCharacteristic(api.hap.Characteristic.Active).updateValue(false);
+                                this.playerLightbulbService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
+                                this.playerPlaySwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
+                                this.playerPauseSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
+                                this.intervalKodiUpdate.stop();
+                                this.resetAllServices(false);
+                            });
+                            // Player.OnSeek
+                            ws.on('Player.OnSeek', () => {
+                                this.log.debug('Notification Received: Player.OnSeek');
+                                kodi.playerGetActivePlayers(this.config)
+                                    .then(playerid => {
+                                        if (playerid !== null && playerid !== -1) {
+                                            kodi.playerGetProperties(this.config, playerid, ['percentage'])
+                                                .then(result => {
+                                                    if (result && result.percentage) {
+                                                        this.playerLightbulbService?.getCharacteristic(
+                                                            api.hap.Characteristic.Brightness).updateValue(Math.round(result.percentage));
+                                                    }
+                                                })
+                                                .catch(error => {
+                                                    this.log.error('Error getting player properties: ' + error.message);
+                                                });
                                         } else {
-                                            this.televisionChannelsService?.getCharacteristic(api.hap.Characteristic.ActiveIdentifier).updateValue(1);
+                                            this.log.error('Error getting active players');
                                         }
-                                        this.log.debug('Setting Info (' + itemtype + '): "' + title + '" (' + activeIdentifier + ')');
-                                        break;
-                                    default:
-                                        this.log.debug('Setting Info (' + itemtype + '): "' + title + '"');
-                                }
-                            }
+                                    })
+                                    .catch(error => {
+                                        this.log.error('Error getting active players: ' + error.message);
+                                    });
+                            });
+                            // Player.OnSpeedChanged
+                            ws.on('Player.OnSpeedChanged', () => {
+                                this.log.debug('Notification Received: Application.OnSpeedChanged');
+                                kodi.isPlaying(this.config)
+                                    .then(([playing, paused]) => {
+                                        if (playing) {
+                                            this.intervalKodiUpdate.start();
+                                            this.playerLightbulbService?.getCharacteristic(api.hap.Characteristic.On).updateValue(true);
+                                            this.playerPlaySwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(true);
+                                            this.playerPauseSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
+                                        } else if (paused) {
+                                            this.intervalKodiUpdate.stop();
+                                            this.playerLightbulbService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
+                                            this.playerPlaySwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
+                                            this.playerPauseSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(true);
+                                        } else {
+                                            this.intervalKodiUpdate.stop();
+                                            this.resetAllServices(false);
+                                        }
+                                    })
+                                    .catch(error => {
+                                        this.log.error('Error getting playing status: ' + error.message);
+                                    });
+                            });
+                            // VideoLibrary.OnScanStarted
+                            ws.on('VideoLibrary.OnScanStarted', () => {
+                                this.log.debug('Notification Received: VideoLibrary.OnScanStarted');
+                                kodi.storageSetItem(api.user.persistPath(), this.videoLibraryScanSwitchService?.name, 'true')
+                                    .then(() => {
+                                        this.videoLibraryScanSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(true);
+                                    })
+                                    .catch(error => {
+                                        this.log.error('Error on storing Item: ' + error.message);
+                                    });
+                            });
+                            // VideoLibrary.OnScanFinished
+                            ws.on('VideoLibrary.OnScanFinished', () => {
+                                this.log.debug('Notification Received: VideoLibrary.OnScanFinished');
+                                kodi.storageSetItem(api.user.persistPath(), this.videoLibraryScanSwitchService?.name, 'false')
+                                    .then(() => {
+                                        this.videoLibraryScanSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
+                                    })
+                                    .catch(error => {
+                                        this.log.error('Error on storing Item: ' + error.message);
+                                    });
+                            });
+                            // VideoLibrary.OnCleanStarted
+                            ws.on('VideoLibrary.OnCleanStarted', () => {
+                                this.log.debug('Notification Received: VideoLibrary.OnCleanStarted');
+                                kodi.storageSetItem(api.user.persistPath(), this.videoLibraryCleanSwitchService?.name, 'true')
+                                    .then(() => {
+                                        this.videoLibraryCleanSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(true);
+                                    })
+                                    .catch(error => {
+                                        this.log.error('Error on storing Item: ' + error.message);
+                                    });
+                            });
+                            // VideoLibrary.OnCleanFinished
+                            ws.on('VideoLibrary.OnCleanFinished', () => {
+                                this.log.debug('Notification Received: VideoLibrary.OnCleanFinished');
+                                kodi.storageSetItem(api.user.persistPath(), this.videoLibraryCleanSwitchService?.name, 'false')
+                                    .then(() => {
+                                        this.videoLibraryCleanSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
+                                    })
+                                    .catch(error => {
+                                        this.log.error('Error on storing Item: ' + error.message);
+                                    });
+                            });
+                            // AudioLibrary.OnScanStarted
+                            ws.on('AudioLibrary.OnScanStarted', () => {
+                                this.log.debug('Notification Received: AudioLibrary.OnScanStarted');
+                                kodi.storageSetItem(api.user.persistPath(), this.audioLibraryScanSwitchService?.name, 'true')
+                                    .then(() => {
+                                        this.audioLibraryScanSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(true);
+                                    })
+                                    .catch(error => {
+                                        this.log.error('Error on storing Item: ' + error.message);
+                                    });
+                            });
+                            // AudioLibrary.OnScanFinished
+                            ws.on('AudioLibrary.OnScanFinished', () => {
+                                this.log.debug('Notification Received: AudioLibrary.OnScanFinished');
+                                kodi.storageSetItem(api.user.persistPath(), this.audioLibraryScanSwitchService?.name, 'false')
+                                    .then(() => {
+                                        this.audioLibraryScanSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
+                                    })
+                                    .catch(error => {
+                                        this.log.error('Error on storing Item: ' + error.message);
+                                    });
+                            });
+                            // AudioLibrary.OnCleanStarted
+                            ws.on('AudioLibrary.OnCleanStarted', () => {
+                                this.log.debug('Notification Received: AudioLibrary.OnCleanStarted');
+                                kodi.storageSetItem(api.user.persistPath(), this.audioLibraryCleanSwitchService?.name, 'true')
+                                    .then(() => {
+                                        this.audioLibraryCleanSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(true);
+                                    })
+                                    .catch(error => {
+                                        this.log.error('Error on storing Item: ' + error.message);
+                                    });
+                            });
+                            // AudioLibrary.OnCleanFinished
+                            ws.on('AudioLibrary.OnCleanFinished', () => {
+                                this.log.debug('Notification Received: AudioLibrary.OnCleanFinished');
+                                kodi.storageSetItem(api.user.persistPath(), this.audioLibraryCleanSwitchService?.name, 'false')
+                                    .then(() => {
+                                        this.audioLibraryCleanSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
+                                    })
+                                    .catch(error => {
+                                        this.log.error('Error on storing Item: ' + error.message);
+                                    });
+                            });
                         });
-                    } else if (!onplay) {
-                        this.intervalUpdateKodiPlayer.stop();
+                    } else {
+                        this.log.debug('Kodi Notifications: Kodi does not seem to be running - Retry in ' + (this.config.retrytime || 30) + ' seconds');
                     }
+                })
+                .catch(error => {
+                    this.log.error('Kodi Notification: ' + error.message);
                 });
-            } else if (!onplay) {
-                this.intervalUpdateKodiPlayer.stop();
-            }
-        });
+        } else {
+            this.log.debug('Kodi Notification: Already subscribed.');
+        }
     }
 
-    resetAllServices = function (this: KodiPlatform, api: API, completely: boolean) {
+    onSubscribe = function (this: KodiPlatform) {
+        this.televisionControlsService?.getCharacteristic(this.api.hap.Characteristic.Active).updateValue(true);
+        this.updateApplicationVolumeService();
+        this.updateTelevisionChannelsService();
+        this.intervalKodiSubscriptions.stop();
+        this.log.debug('Kodi Notifications: Subscribed successfully');
+        this.subscribed = true;
+    }
+
+    onUnsubscribe = function (this: KodiPlatform) {
+        this.televisionControlsService?.getCharacteristic(this.api.hap.Characteristic.Active).updateValue(false);
+        this.televisionChannelsService?.getCharacteristic(this.api.hap.Characteristic.Active).updateValue(false);
+        this.applicationVolumeLightbulbService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
+        this.applicationVolumeLightbulbService?.getCharacteristic(this.api.hap.Characteristic.Brightness).updateValue(0);
+        this.intervalKodiSubscriptions.start();
+        this.log.debug('Kodi Notifications: Unsubscribed successfully');
+        this.subscribed = false;
+    }
+
+    updateKodiPlayer = async function (this: KodiPlatform, onplay: boolean) {
+        kodi.playerGetActivePlayers(this.config)
+            .then(playerid => {
+                if (playerid !== null) {
+                    if (playerid !== -1) {
+                        kodi.playerGetItem(this.config, playerid as number, ['artist', 'album', 'showtitle', 'season', 'episode', 'duration'])
+                            .then(itemresult => {
+                                if (itemresult && itemresult.item) {
+                                    const artist = typeof itemresult.item.artist !== 'undefined' && itemresult.item.artist.length !== 0 ? itemresult.item.artist.join(', ') : '-';
+                                    const album = typeof itemresult.item.album !== 'undefined' && itemresult.item.album !== '' ? itemresult.item.album : '-';
+                                    const itemtype = typeof itemresult.item.type !== 'undefined' && itemresult.item.type !== '' ? itemresult.item.type : '-';
+                                    const title = typeof itemresult.item.label !== 'undefined' && itemresult.item.label !== '' ? itemresult.item.label : '-';
+                                    const showtitle = typeof itemresult.item.showtitle !== 'undefined' && itemresult.item.showtitle !== '' ? itemresult.item.showtitle : '-';
+                                    let seasonEpisode = '-';
+                                    if (itemtype === 'episode') {
+                                        if ((itemresult.item.season !== -1 && itemresult.item.episode !== -1) ||
+                                            (typeof itemresult.item.season !== 'undefined' && typeof itemresult.item.episode !== 'undefined')) {
+                                            seasonEpisode = 'S' + itemresult.item.season.toString().padStart(2, '0') +
+                                                'E' + itemresult.item.episode.toString().padStart(2, '0');
+                                        } else if ((itemresult.item.season === -1 && itemresult.item.episode !== -1) ||
+                                            (typeof itemresult.item.season === 'undefined' && typeof itemresult.item.episode !== 'undefined')) {
+                                            seasonEpisode = 'E' + itemresult.item.episode.toString().padStart(2, '0');
+                                        }
+                                    }
+
+                                    this.playerLightbulbService?.updateCharacteristic(this.customCharacteristics.Type, itemtype);
+                                    this.playerLightbulbService?.updateCharacteristic(this.customCharacteristics.Title, title);
+                                    this.playerLightbulbService?.updateCharacteristic(this.customCharacteristics.ShowTitle, showtitle);
+                                    this.playerLightbulbService?.updateCharacteristic(this.customCharacteristics.SeasonEpisode, seasonEpisode);
+                                    this.playerLightbulbService?.updateCharacteristic(this.customCharacteristics.Artist, artist);
+                                    this.playerLightbulbService?.updateCharacteristic(this.customCharacteristics.Album, album);
+                                    kodi.playerGetProperties(this.config, playerid as number, ['speed', 'percentage', 'time', 'totaltime'])
+                                        .then(result => {
+                                            if (result) {
+                                                const speed = result.speed !== 0 ? result.speed !== 0 : 0;
+                                                let percentage = Math.round(result.percentage ? result.percentage : 0);
+                                                let timeAndTotaltime = result.time.hours + ':' +
+                                                    result.time.minutes.toString().padStart(2, '0') + ':' +
+                                                    result.time.seconds.toString().padStart(2, '0') + ' / ' +
+                                                    result.totaltime.hours + ':' +
+                                                    result.totaltime.minutes.toString().padStart(2, '0') + ':' +
+                                                    result.totaltime.seconds.toString().padStart(2, '0');
+                                                if (timeAndTotaltime === '0:00:00 / 0:00:00') {
+                                                    timeAndTotaltime = '-';
+                                                }
+                                                if (percentage === 0 && timeAndTotaltime === '-') {
+                                                    percentage = 100;
+                                                }
+                                                this.playerLightbulbService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(speed);
+                                                this.playerLightbulbService?.getCharacteristic(this.api.hap.Characteristic.Brightness).updateValue(Math.round(percentage));
+                                                this.playerPlaySwitchService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(speed);
+                                                this.playerPauseSwitchService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(!speed);
+                                                this.playerLightbulbService?.setCharacteristic(this.customCharacteristics.Position, timeAndTotaltime);
+                                                let activeIdentifier = -1;
+                                                const tvChannelsChannelsConfig =
+                                                    this.config.television && this.config.television.tv && this.config.television.tv.channels || [];
+                                                switch (itemtype) {
+                                                    case 'movie':
+                                                        this.log.debug('Setting Info (' + itemtype + '): "' + title + '" - ' + timeAndTotaltime + ' (' + percentage + ' %)');
+                                                        break;
+                                                    case 'episode':
+                                                        this.log.debug('Setting Info (' + itemtype + '): ' + showtitle + ' ' + seasonEpisode + ' "' + title + '" - ' +
+                                                            timeAndTotaltime + ' (' + percentage + ' %)');
+                                                        break;
+                                                    case 'song':
+                                                        this.log.debug('Setting Info (' + itemtype + '): ' + artist + ' "' + title + '" (' + album + ') - ' +
+                                                            timeAndTotaltime + ' (' + percentage + ' %)');
+                                                        break;
+                                                    case 'unknown':
+                                                        this.log.debug('Setting Info (' + itemtype + '): "' + title + '" - ' + timeAndTotaltime + ' (' + percentage + ' %)');
+                                                        break;
+                                                    case 'channel':
+                                                        this.televisionChannelsService?.getCharacteristic(this.api.hap.Characteristic.Active).updateValue(true);
+                                                        for (let index = 0; index < tvChannelsChannelsConfig.length; index++) {
+                                                            if (title === tvChannelsChannelsConfig[index]) {
+                                                                activeIdentifier = index + 1;
+                                                            }
+                                                        }
+                                                        if (activeIdentifier && activeIdentifier !== -1) {
+                                                            this.televisionChannelsService?.getCharacteristic(
+                                                                this.api.hap.Characteristic.ActiveIdentifier).updateValue(activeIdentifier);
+                                                        } else {
+                                                            this.televisionChannelsService?.getCharacteristic(this.api.hap.Characteristic.ActiveIdentifier).updateValue(1);
+                                                        }
+                                                        this.log.debug('Setting Info (' + itemtype + '): "' + title + '" (' + activeIdentifier + ')');
+                                                        break;
+                                                    default:
+                                                        this.log.debug('Setting Info (' + itemtype + '): "' + title + '"');
+                                                }
+                                            } else {
+                                                this.log.error('Error getting player properties: no result');
+                                            }
+                                        })
+                                        .catch(error => {
+                                            this.log.error('Error getting player properties: ' + error.message);
+                                        });
+                                } else if (!onplay) {
+                                    this.intervalKodiUpdate.stop();
+                                } else {
+                                    this.log.error('Error getting player item: no result');
+                                }
+                            })
+                            .catch(error => {
+                                this.log.error('Error getting player item: ' + error.message);
+                            });
+                    } else if (!onplay) {
+                        this.intervalKodiUpdate.stop();
+                    }
+                } else {
+                    this.log.error('Error getting active players: no result');
+                }
+            })
+            .catch(error => {
+                this.log.error('Error getting active players: ' + error.message);
+            });
+    }
+
+    resetAllServices = function (this: KodiPlatform, completely: boolean) {
         this.log.debug('Reset All Services');
         if (completely) {
-            this.televisionControlsService?.getCharacteristic(api.hap.Characteristic.Active).updateValue(false);
-            this.applicationVolumeLightbulbService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
-            this.applicationVolumeLightbulbService?.getCharacteristic(api.hap.Characteristic.Brightness).updateValue(0);
+            this.televisionControlsService?.getCharacteristic(this.api.hap.Characteristic.Active).updateValue(false);
+            this.applicationVolumeLightbulbService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
+            this.applicationVolumeLightbulbService?.getCharacteristic(this.api.hap.Characteristic.Brightness).updateValue(0);
         }
-        this.televisionChannelsService?.getCharacteristic(api.hap.Characteristic.Active).updateValue(false);
-        this.playerLightbulbService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
-        this.playerLightbulbService?.getCharacteristic(api.hap.Characteristic.Brightness).updateValue(0);
+        this.televisionChannelsService?.getCharacteristic(this.api.hap.Characteristic.Active).updateValue(false);
+        this.playerLightbulbService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
+        this.playerLightbulbService?.getCharacteristic(this.api.hap.Characteristic.Brightness).updateValue(0);
         this.playerLightbulbService?.setCharacteristic(this.customCharacteristics.Type, '-');
         this.playerLightbulbService?.setCharacteristic(this.customCharacteristics.Title, '-');
         this.playerLightbulbService?.setCharacteristic(this.customCharacteristics.ShowTitle, '-');
@@ -743,29 +862,39 @@ export class KodiPlatform implements DynamicPlatformPlugin {
         this.playerLightbulbService?.setCharacteristic(this.customCharacteristics.Artist, '-');
         this.playerLightbulbService?.setCharacteristic(this.customCharacteristics.Album, '-');
         this.playerLightbulbService?.setCharacteristic(this.customCharacteristics.Position, '-');
-        this.playerPlaySwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
-        this.playerPauseSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
-        this.playerStopSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
-        this.videoLibraryScanSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
-        this.videoLibraryCleanSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
-        this.audioLibraryScanSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
-        this.audioLibraryCleanSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
+        this.playerPlaySwitchService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
+        this.playerPauseSwitchService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
+        this.playerStopSwitchService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
+        this.videoLibraryScanSwitchService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
+        this.videoLibraryCleanSwitchService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
+        this.audioLibraryScanSwitchService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
+        this.audioLibraryCleanSwitchService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
     }
 
-    updateApplicationVolumeService = function (this: KodiPlatform, api: API) {
-        kodi.applicationGetProperties(this.config, this.log, ['volume', 'muted'], (error, result) => {
-            if (!error && result) {
-                const volume = result.volume ? result.volume : 0;
-                const muted = result.muted ? result.muted : false;
-                this.applicationVolumeLightbulbService?.getCharacteristic(api.hap.Characteristic.On).updateValue(!muted);
-                this.applicationVolumeLightbulbService?.getCharacteristic(api.hap.Characteristic.Brightness).updateValue(volume);
-            }
-        });
+    updateApplicationVolumeService = function (this: KodiPlatform) {
+        kodi.applicationGetProperties(this.config, ['volume', 'muted'])
+            .then(result => {
+                if (result) {
+                    const volume = result.volume ? result.volume : 0;
+                    const muted = result.muted ? result.muted : false;
+                    this.applicationVolumeLightbulbService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(!muted);
+                    this.applicationVolumeLightbulbService?.getCharacteristic(this.api.hap.Characteristic.Brightness).updateValue(volume);
+                } else {
+                    this.log.error('Error getting application properties: no result');
+                }
+            })
+            .catch(error => {
+                this.log.error('Error getting application properties: ' + error.message);
+            });
     }
 
-    updateTelevisionChannelsService = function (this: KodiPlatform, api: API) {
-        kodi.tvIsPlaying(this.config, this.log, (tvplaying) => {
-            this.televisionChannelsService?.getCharacteristic(api.hap.Characteristic.Active).updateValue(tvplaying);
-        });
+    updateTelevisionChannelsService = function (this: KodiPlatform) {
+        kodi.tvIsPlaying(this.config)
+            .then(tvisplaying => {
+                this.televisionChannelsService?.getCharacteristic(this.api.hap.Characteristic.Active).updateValue(tvisplaying);
+            })
+            .catch(error => {
+                this.log.error('Error getting tv playing status: ' + error.message);
+            });
     }
 }
