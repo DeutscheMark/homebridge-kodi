@@ -271,7 +271,7 @@ export class KodiPlatform implements DynamicPlatformPlugin {
 
         // Reset all services on start
 
-        this.resetAllServices(true);
+        this.resetAllCharacteristics(true);
 
         // Check volume on start
 
@@ -416,7 +416,7 @@ export class KodiPlatform implements DynamicPlatformPlugin {
                         this.log.warn('Kodi was closed by the plugin, but is still running. ' +
                             'If Kodi is still running please check your power off command. If not check if the Kodi process is unresponsive and/or still in the memory.');
                         this.intervalKodiSubscriptions.stop();
-                        this.resetAllServices(true);
+                        this.resetAllCharacteristics(true);
                     }
                 } else {
                     this.log.debug('Kodi is not running! - Retry in ' + (this.config.retrytime || 30) + ' seconds');
@@ -426,14 +426,14 @@ export class KodiPlatform implements DynamicPlatformPlugin {
                     this.applicationVolumeLightbulbService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
                     this.applicationVolumeLightbulbService?.getCharacteristic(this.api.hap.Characteristic.Brightness).updateValue(0);
                     this.intervalKodiSubscriptions.start();
-                    this.resetAllServices(true);
+                    this.resetAllCharacteristics(true);
                     this.closedByPlugin = false;
                 }
             })
             .catch(error => {
                 this.log.error('Kodi Check Status: ' + error.message);
             });
-    }
+    };
 
     subscribeToKodiNotifications = async function (this: KodiPlatform, api: API) {
         if (!this.subscribed) {
@@ -475,7 +475,7 @@ export class KodiPlatform implements DynamicPlatformPlugin {
                                 ws.unsubscribe(subscriptions).catch(_ => {
                                     this.onUnsubscribe();
                                 });
-                                this.resetAllServices(true);
+                                this.resetAllCharacteristics(true);
                             });
                             // System.OnWake
                             ws.on('System.OnWake', () => {
@@ -492,7 +492,7 @@ export class KodiPlatform implements DynamicPlatformPlugin {
                                 ws.unsubscribe(subscriptions).catch(_ => {
                                     this.onUnsubscribe();
                                 });
-                                this.resetAllServices(true);
+                                this.resetAllCharacteristics(true);
                             });
                             // System.OnRestart
                             ws.on('System.OnRestart', () => {
@@ -501,25 +501,12 @@ export class KodiPlatform implements DynamicPlatformPlugin {
                                 ws.unsubscribe(subscriptions).catch(_ => {
                                     this.onUnsubscribe();
                                 });
-                                this.resetAllServices(true);
+                                this.resetAllCharacteristics(true);
                             });
                             // Player.OnVolumeChanged
                             ws.on('Application.OnVolumeChanged', () => {
                                 this.log.debug('Notification Received: Application.OnVolumeChanged');
-                                kodi.applicationGetProperties(this.config, ['muted', 'volume'])
-                                    .then(result => {
-                                        if (result) {
-                                            const muted = result.muted ? result.muted : false;
-                                            const volume = result.volume ? result.volume : 0;
-                                            this.applicationVolumeLightbulbService?.getCharacteristic(api.hap.Characteristic.On).updateValue(!muted && volume !== 0);
-                                            this.applicationVolumeLightbulbService?.getCharacteristic(api.hap.Characteristic.Brightness).updateValue(volume);
-                                        } else {
-                                            this.log.error('Error getting properties: no result');
-                                        }
-                                    })
-                                    .catch(error => {
-                                        this.log.error('Error getting properties: ' + error.message);
-                                    });
+                                this.updateApplicationVolumeService();
                             });
                             // Player.OnPlay
                             ws.on('Player.OnPlay', () => {
@@ -558,7 +545,7 @@ export class KodiPlatform implements DynamicPlatformPlugin {
                                 this.playerPlaySwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
                                 this.playerPauseSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(false);
                                 this.intervalKodiUpdate.stop();
-                                this.resetAllServices(false);
+                                this.resetAllCharacteristics(false);
                             });
                             // Player.OnSeek
                             ws.on('Player.OnSeek', () => {
@@ -601,7 +588,7 @@ export class KodiPlatform implements DynamicPlatformPlugin {
                                             this.playerPauseSwitchService?.getCharacteristic(api.hap.Characteristic.On).updateValue(true);
                                         } else {
                                             this.intervalKodiUpdate.stop();
-                                            this.resetAllServices(false);
+                                            this.resetAllCharacteristics(false);
                                         }
                                     })
                                     .catch(error => {
@@ -707,16 +694,16 @@ export class KodiPlatform implements DynamicPlatformPlugin {
         } else {
             this.log.debug('Kodi Notification: Already subscribed.');
         }
-    }
+    };
 
     onSubscribe = function (this: KodiPlatform) {
         this.televisionControlsService?.getCharacteristic(this.api.hap.Characteristic.Active).updateValue(true);
         this.updateApplicationVolumeService();
         this.updateTelevisionChannelsService();
         this.intervalKodiSubscriptions.stop();
-        this.log.debug('Kodi Notifications: Subscribed successfully');
+        this.log.info('Kodi Notifications: Subscribed successfully');
         this.subscribed = true;
-    }
+    };
 
     onUnsubscribe = function (this: KodiPlatform) {
         this.televisionControlsService?.getCharacteristic(this.api.hap.Characteristic.Active).updateValue(false);
@@ -724,9 +711,9 @@ export class KodiPlatform implements DynamicPlatformPlugin {
         this.applicationVolumeLightbulbService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
         this.applicationVolumeLightbulbService?.getCharacteristic(this.api.hap.Characteristic.Brightness).updateValue(0);
         this.intervalKodiSubscriptions.start();
-        this.log.debug('Kodi Notifications: Unsubscribed successfully');
+        this.log.info('Kodi Notifications: Unsubscribed successfully');
         this.subscribed = false;
-    }
+    };
 
     updateKodiPlayer = async function (this: KodiPlatform, onplay: boolean) {
         kodi.playerGetActivePlayers(this.config)
@@ -736,11 +723,21 @@ export class KodiPlatform implements DynamicPlatformPlugin {
                         kodi.playerGetItem(this.config, playerid as number, ['artist', 'album', 'showtitle', 'season', 'episode', 'duration'])
                             .then(itemresult => {
                                 if (itemresult && itemresult.item) {
-                                    const artist = typeof itemresult.item.artist !== 'undefined' && itemresult.item.artist.length !== 0 ? itemresult.item.artist.join(', ') : '-';
-                                    const album = typeof itemresult.item.album !== 'undefined' && itemresult.item.album !== '' ? itemresult.item.album : '-';
-                                    const itemtype = typeof itemresult.item.type !== 'undefined' && itemresult.item.type !== '' ? itemresult.item.type : '-';
-                                    const title = typeof itemresult.item.label !== 'undefined' && itemresult.item.label !== '' ? itemresult.item.label : '-';
-                                    const showtitle = typeof itemresult.item.showtitle !== 'undefined' && itemresult.item.showtitle !== '' ? itemresult.item.showtitle : '-';
+                                    const artist = typeof itemresult.item.artist !== 'undefined' && itemresult.item.artist.length !== 0 ?
+                                        itemresult.item.artist.join(', ').substring(0, 64) :
+                                        '-';
+                                    const album = typeof itemresult.item.album !== 'undefined' && itemresult.item.album !== '' ?
+                                        itemresult.item.album.substring(0, 64) :
+                                        '-';
+                                    const itemtype = typeof itemresult.item.type !== 'undefined' && itemresult.item.type !== '' ?
+                                        itemresult.item.type.substring(0, 64) :
+                                        '-';
+                                    const title = typeof itemresult.item.label !== 'undefined' && itemresult.item.label !== '' ?
+                                        itemresult.item.label.substring(0, 64) :
+                                        '-';
+                                    const showtitle = typeof itemresult.item.showtitle !== 'undefined' && itemresult.item.showtitle !== '' ?
+                                        itemresult.item.showtitle.substring(0, 64) :
+                                        '-';
                                     let seasonEpisode = '-';
                                     if (itemtype === 'episode') {
                                         if ((itemresult.item.season !== -1 && itemresult.item.episode !== -1) ||
@@ -784,20 +781,20 @@ export class KodiPlatform implements DynamicPlatformPlugin {
                                                 let activeIdentifier = -1;
                                                 const tvChannelsChannelsConfig =
                                                     this.config.television && this.config.television.tv && this.config.television.tv.channels || [];
+                                                const logprefix = 'Setting Info (' + itemtype + '): ';
+                                                let logmessage = '';
                                                 switch (itemtype) {
                                                     case 'movie':
-                                                        this.log.debug('Setting Info (' + itemtype + '): "' + title + '" - ' + timeAndTotaltime + ' (' + percentage + ' %)');
+                                                        logmessage = '"' + title + '" - ' + timeAndTotaltime + ' (' + percentage + ' %)';
                                                         break;
                                                     case 'episode':
-                                                        this.log.debug('Setting Info (' + itemtype + '): ' + showtitle + ' ' + seasonEpisode + ' "' + title + '" - ' +
-                                                            timeAndTotaltime + ' (' + percentage + ' %)');
+                                                        logmessage = showtitle + ' ' + seasonEpisode + ' "' + title + '" - ' + timeAndTotaltime + ' (' + percentage + ' %)';
                                                         break;
                                                     case 'song':
-                                                        this.log.debug('Setting Info (' + itemtype + '): ' + artist + ' "' + title + '" (' + album + ') - ' +
-                                                            timeAndTotaltime + ' (' + percentage + ' %)');
+                                                        logmessage = artist + ' "' + title + '" (' + album + ') - ' + timeAndTotaltime + ' (' + percentage + ' %)';
                                                         break;
                                                     case 'unknown':
-                                                        this.log.debug('Setting Info (' + itemtype + '): "' + title + '" - ' + timeAndTotaltime + ' (' + percentage + ' %)');
+                                                        logmessage = '"' + title + '" - ' + timeAndTotaltime + ' (' + percentage + ' %)';
                                                         break;
                                                     case 'channel':
                                                         this.televisionChannelsService?.getCharacteristic(this.api.hap.Characteristic.Active).updateValue(true);
@@ -812,13 +809,14 @@ export class KodiPlatform implements DynamicPlatformPlugin {
                                                         } else {
                                                             this.televisionChannelsService?.getCharacteristic(this.api.hap.Characteristic.ActiveIdentifier).updateValue(1);
                                                         }
-                                                        this.log.debug('Setting Info (' + itemtype + '): "' + title + '" (' + activeIdentifier + ')');
+                                                        logmessage = '"' + title + '" (' + activeIdentifier + ')';
                                                         break;
                                                     default:
-                                                        this.log.debug('Setting Info (' + itemtype + '): "' + title + '"');
+                                                        logmessage = '"' + title + '"';
                                                 }
+                                                this.log.debug(logprefix + logmessage);
                                             } else {
-                                                this.log.error('Error getting player properties: no result');
+                                                this.log.debug('Getting player properties: no result');
                                             }
                                         })
                                         .catch(error => {
@@ -827,7 +825,7 @@ export class KodiPlatform implements DynamicPlatformPlugin {
                                 } else if (!onplay) {
                                     this.intervalKodiUpdate.stop();
                                 } else {
-                                    this.log.error('Error getting player item: no result');
+                                    this.log.debug('Getting player item: no result');
                                 }
                             })
                             .catch(error => {
@@ -837,16 +835,16 @@ export class KodiPlatform implements DynamicPlatformPlugin {
                         this.intervalKodiUpdate.stop();
                     }
                 } else {
-                    this.log.error('Error getting active players: no result');
+                    this.log.debug('Getting active players: no result');
                 }
             })
             .catch(error => {
                 this.log.error('Error getting active players: ' + error.message);
             });
-    }
+    };
 
-    resetAllServices = function (this: KodiPlatform, completely: boolean) {
-        this.log.debug('Reset All Services');
+    resetAllCharacteristics = function (this: KodiPlatform, completely: boolean) {
+        this.log.debug('Reset All Characteristics');
         if (completely) {
             this.televisionControlsService?.getCharacteristic(this.api.hap.Characteristic.Active).updateValue(false);
             this.applicationVolumeLightbulbService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
@@ -869,15 +867,15 @@ export class KodiPlatform implements DynamicPlatformPlugin {
         this.videoLibraryCleanSwitchService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
         this.audioLibraryScanSwitchService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
         this.audioLibraryCleanSwitchService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(false);
-    }
+    };
 
     updateApplicationVolumeService = function (this: KodiPlatform) {
         kodi.applicationGetProperties(this.config, ['volume', 'muted'])
             .then(result => {
                 if (result) {
-                    const volume = result.volume ? result.volume : 0;
                     const muted = result.muted ? result.muted : false;
-                    this.applicationVolumeLightbulbService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(!muted);
+                    const volume = result.volume ? result.volume : 0;
+                    this.applicationVolumeLightbulbService?.getCharacteristic(this.api.hap.Characteristic.On).updateValue(!muted && volume !== 0);
                     this.applicationVolumeLightbulbService?.getCharacteristic(this.api.hap.Characteristic.Brightness).updateValue(volume);
                 } else {
                     this.log.error('Error getting application properties: no result');
@@ -886,7 +884,7 @@ export class KodiPlatform implements DynamicPlatformPlugin {
             .catch(error => {
                 this.log.error('Error getting application properties: ' + error.message);
             });
-    }
+    };
 
     updateTelevisionChannelsService = function (this: KodiPlatform) {
         kodi.tvIsPlaying(this.config)
@@ -896,5 +894,6 @@ export class KodiPlatform implements DynamicPlatformPlugin {
             .catch(error => {
                 this.log.error('Error getting tv playing status: ' + error.message);
             });
-    }
+    };
+
 }
