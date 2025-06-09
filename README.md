@@ -14,7 +14,7 @@
 [![PayPal](https://img.shields.io/badge/Donate-PayPal-blue?style=flat-square)](https://www.paypal.me/DeutscheMark/5)
 
 ![Kodi](https://img.shields.io/badge/Minimum%20Kodi%20Version-12.0%20(Frodo)-orange?style=flat-square)
-![Kodi](https://img.shields.io/badge/Latest%20Kodi%20Version-20.0%20(Nexus)-yellow?style=flat-square)
+![Kodi](https://img.shields.io/badge/Latest%20Kodi%20Version-21.2%20(Omega)-yellow?style=flat-square)
 
 ### Control [Kodi](https://kodi.tv) with HomeKit and [Homebridge](https://github.com/nfarina/homebridge)
 

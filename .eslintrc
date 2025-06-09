@@ -6,7 +6,7 @@
         "plugin:@typescript-eslint/recommended"
     ],
     "parserOptions": {
-        "ecmaVersion": "latest",
+        "ecmaVersion": 2018,
         "sourceType": "module"
     },
     "ignorePatterns": [
