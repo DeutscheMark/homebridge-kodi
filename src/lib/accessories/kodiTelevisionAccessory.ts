@@ -535,8 +535,8 @@ export class TelevisionAccessory extends KodiTelevisionAccessory {
 
         for (let index = 0; index < this.televisionService.linkedServices.length; index++) {
             const service = this.televisionService.linkedServices[index];
-            const name = service.getCharacteristic(this.platform.api.hap.Characteristic.Name).getValue();
-            const shownInputService = shownInputServices.find(i => i.getCharacteristic(this.platform.api.hap.Characteristic.Name).getValue() === name);
+            const name = service.getCharacteristic(this.platform.api.hap.Characteristic.Name).value;
+            const shownInputService = shownInputServices.find(i => i.getCharacteristic(this.platform.api.hap.Characteristic.Name).value === name);
             if (!shownInputService) {
                 this.log.debug('Removing accessory and linked service from television service: ' + this.televisionService.name + ' ' + name);
                 this.televisionService.removeLinkedService(service);
