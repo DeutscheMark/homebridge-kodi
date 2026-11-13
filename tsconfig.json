@@ -1,13 +1,10 @@
 {
     "compilerOptions": {
-        "target": "ES2018",
+        "target": "ES2022",
         "module": "commonjs",
-        "lib": [
-            "es2015",
-            "es2016",
-            "es2017",
-            "es2018"
-        ],
+        "moduleResolution": "node10",
+        "ignoreDeprecations": "6.0",
+        "lib": ["ES2022"],
         "declaration": true,
         "declarationMap": true,
         "sourceMap": true,

@@ -1,7 +1,7 @@
 {
     "displayName": "Homebridge Kodi",
     "name": "homebridge-kodi",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "description": "Kodi plugin for Homebridge",
     "license": "MIT",
     "files": [
@@ -70,31 +70,30 @@
         "smarthome"
     ],
     "engines": {
-        "node": "^18.20.4 || ^20.18.0 || ^22.10.0",
-        "homebridge": "^1.10.0 || ^2.0.0-beta.0"
+        "node": "^22.12.0 || ^24.0.0 || ^26.0.0",
+        "homebridge": "^1.10.0 || ^2.0.0"
     },
     "main": "dist/index.js",
     "scripts": {
         "build": "rimraf ./dist && tsc",
+        "lint": "eslint .",
         "clean": "rimraf ./dist",
         "prepublishOnly": "npm run build",
         "postpublish": "npm run clean",
         "test": "echo \"Error: no test specified\" && exit 1"
     },
     "dependencies": {
-        "got": "^11.8.3",
-        "node-persist": "^3.1.0",
-        "rpc-websockets": "^7.4.17",
-        "setinterval-plus": "^1.0.3"
+        "node-persist": "^4.0.4",
+        "rpc-websockets": "^10.0.1"
     },
     "devDependencies": {
-        "@types/node": "^17.0.24",
-        "@typescript-eslint/eslint-plugin": "^5.19.0",
-        "@typescript-eslint/parser": "^5.19.0",
-        "eslint": "^8.13.0",
-        "homebridge": "^1.4.0",
-        "rimraf": "^3.0.2",
-        "ts-node": "^10.7.0",
-        "typescript": "^4.6.3"
+        "@eslint/js": "^10.0.1",
+        "@types/node": "^26.6.6",
+        "@typescript-eslint/eslint-plugin": "^8.72.2",
+        "@typescript-eslint/parser": "^8.72.2",
+        "eslint": "^10.14.0",
+        "homebridge": "^2.5.0",
+        "rimraf": "^6.1.4",
+        "typescript": "^6.0.3"
     }
 }

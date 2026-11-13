@@ -7,7 +7,6 @@ import connection = require('../util/connection');
 import util = require('util');
 import child_process = require('child_process');
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const storage = require('node-persist');
 
 export = {

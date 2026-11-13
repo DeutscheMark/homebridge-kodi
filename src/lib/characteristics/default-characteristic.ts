@@ -1,5 +1,4 @@
-import { Perms, Formats } from 'hap-nodejs';
-import type { Characteristic as CharacteristicClass, CharacteristicProps } from 'homebridge';
+import type { Characteristic as CharacteristicClass, CharacteristicProps, Perms } from 'homebridge';
 
 export default function defaultCharacteristic(Characteristic: typeof CharacteristicClass): typeof CharacteristicClass {
     return class DefaultCharacteristic extends Characteristic {
@@ -10,8 +9,8 @@ export default function defaultCharacteristic(Characteristic: typeof Characteris
         ) {
             super(displayName, UUID, props!);
             this.setProps({
-                format: Formats.STRING,
-                perms: [Perms.PAIRED_READ, Perms.NOTIFY],
+                format: 'string',
+                perms: ['pr' as Perms, 'ev' as Perms],
                 ...props,
             });
             this.value = this.getDefaultValue();
