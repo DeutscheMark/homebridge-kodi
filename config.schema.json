@@ -242,7 +242,7 @@
                         "interval": {
                             "title": "Interval",
                             "type": "integer",
-                            "default": 200,
+                            "default": 500,
                             "minimum": 1
                         },
                         "sequence": {
@@ -314,25 +314,7 @@
                     "type": "help",
                     "helpvalue": "<h6>TV Controls Accessory</h6><em class='primary-text'>Add a TV accessory for menu items with Kodi remote control. (Enable accessory with at least one menu item selected)</em>"
                 },
-                {
-                    "key": "television.controls.menuitems",
-                    "type": "checkboxes",
-                    "nodescription": true,
-                    "notitle": true,
-                    "items": [
-                        {
-                            "type": "div",
-                            "displayFlex": false,
-                            "items": [
-                                {
-                                    "key": "television.controls.menuitems[]",
-                                    "notitle": true,
-                                    "placeholder": "Enter channel name..."
-                                }
-                            ]
-                        }
-                    ]
-                }
+                "television.controls.menuitems"
             ]
         },
         {
@@ -374,6 +356,7 @@
             "expanded": false,
             "nodescription": true,
             "items": [
+                "player.main",
                 "player.play",
                 "player.pause",
                 "player.stop"

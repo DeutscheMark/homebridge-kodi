@@ -149,18 +149,19 @@ export class PlayerLightbulbAccessory extends KodiAccessory {
                     });
             });
 
-        this.lightbulbService.getCharacteristic(platform.customCharacteristics.Type) ||
-            this.lightbulbService.addCharacteristic(platform.customCharacteristics.Type);
-        this.lightbulbService.getCharacteristic(platform.customCharacteristics.ShowTitle) ||
-            this.lightbulbService.addCharacteristic(platform.customCharacteristics.ShowTitle);
-        this.lightbulbService.getCharacteristic(platform.customCharacteristics.Title) ||
-            this.lightbulbService.addCharacteristic(platform.customCharacteristics.Title);
-        this.lightbulbService.getCharacteristic(platform.customCharacteristics.Position) ||
-            this.lightbulbService.addCharacteristic(platform.customCharacteristics.Position);
-        this.lightbulbService.getCharacteristic(platform.customCharacteristics.Artist) ||
-            this.lightbulbService.addCharacteristic(platform.customCharacteristics.Artist);
-        this.lightbulbService.getCharacteristic(platform.customCharacteristics.Album) ||
-            this.lightbulbService.addCharacteristic(platform.customCharacteristics.Album);
+        for (const characteristic of [
+            platform.customCharacteristics.Type,
+            platform.customCharacteristics.ShowTitle,
+            platform.customCharacteristics.Title,
+            platform.customCharacteristics.Position,
+            platform.customCharacteristics.Artist,
+            platform.customCharacteristics.Album,
+            platform.customCharacteristics.SeasonEpisode,
+        ]) {
+            if (!this.lightbulbService.getCharacteristic(characteristic)) {
+                this.lightbulbService.addOptionalCharacteristic(characteristic);
+            }
+        }
     }
 
     updateValueToFalse() {

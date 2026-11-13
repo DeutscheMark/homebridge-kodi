@@ -29,17 +29,14 @@ import Characteristics from './lib/characteristics';
 import WebSockets = require('rpc-websockets');
 const WebSocket = WebSockets.Client;
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import setIntervalPlus = require('setinterval-plus');
+import ControllableInterval from './util/interval';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const packageJSON = require('../package.json');
 
 export class KodiPlatform implements DynamicPlatformPlugin {
 
-    public readonly Service: typeof Service = this.api.hap.Service;
-    public readonly Characteristic: typeof Characteristic = this.api.hap.Characteristic;
+    public readonly Service: typeof Service;
+    public readonly Characteristic: typeof Characteristic;
 
     public customCharacteristics: {
         [key: string]: WithUUID<new () => Characteristic>;
@@ -51,9 +48,9 @@ export class KodiPlatform implements DynamicPlatformPlugin {
     public subscribed = false;
     public closedByPlugin = false;
 
-    public intervalKodiSubscriptions: setIntervalPlus;
-    public intervalKodiStatus: setIntervalPlus;
-    public intervalKodiUpdate: setIntervalPlus;
+    public intervalKodiSubscriptions!: ControllableInterval;
+    public intervalKodiStatus!: ControllableInterval;
+    public intervalKodiUpdate!: ControllableInterval;
 
     public powerSwitchService: Service | undefined;
     public televisionControlsService: Service | undefined;
@@ -77,6 +74,8 @@ export class KodiPlatform implements DynamicPlatformPlugin {
         public readonly config: PlatformConfig,
         public readonly api: API,
     ) {
+        this.Service = api.hap.Service;
+        this.Characteristic = api.hap.Characteristic;
         this.log = new KodiLogger(log, this.config.debug);
 
         this.log.debug('Finished initializing platform:', this.config.name);
@@ -279,19 +278,19 @@ export class KodiPlatform implements DynamicPlatformPlugin {
 
         // Kodi Status
 
-        this.intervalKodiStatus = new setIntervalPlus(this.checkKodiStatus.bind(this), retrytime * 1000);
+        this.intervalKodiStatus = new ControllableInterval(this.checkKodiStatus.bind(this), retrytime * 1000);
 
         // Kodi Notifications
 
         this.log.debug('Start subscribing to Kodi Notifications');
         this.subscribeToKodiNotifications(this.api);
-        this.intervalKodiSubscriptions = new setIntervalPlus(this.subscribeToKodiNotifications.bind(this, this.api), retrytime * 1000);
+        this.intervalKodiSubscriptions = new ControllableInterval(this.subscribeToKodiNotifications.bind(this, this.api), retrytime * 1000);
 
         // Intervalled Updating Start
 
         this.log.debug('Start Updating Kodi with polling: ' + polling + ' seconds');
         this.updateKodiPlayer(false);
-        this.intervalKodiUpdate = new setIntervalPlus(this.updateKodiPlayer.bind(this, false), (polling !== 0 ? polling : 10) * 1000);
+        this.intervalKodiUpdate = new ControllableInterval(this.updateKodiPlayer.bind(this, false), (polling !== 0 ? polling : 10) * 1000);
 
         // Start Updates when currently playing
 
@@ -870,6 +869,9 @@ export class KodiPlatform implements DynamicPlatformPlugin {
     };
 
     updateApplicationVolumeService = function (this: KodiPlatform) {
+        if (!this.applicationVolumeLightbulbService) {
+            return;
+        }
         kodi.applicationGetProperties(this.config, ['volume', 'muted'])
             .then(result => {
                 if (result) {

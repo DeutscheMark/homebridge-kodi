@@ -1,5 +1,4 @@
-import { Formats, Perms } from 'hap-nodejs';
-import type { Characteristic, WithUUID } from 'homebridge';
+import type { Characteristic, Perms, WithUUID } from 'homebridge';
 
 export default function position(DefaultCharacteristic: typeof Characteristic): WithUUID<new () => Characteristic> {
     return class Position extends DefaultCharacteristic {
@@ -7,8 +6,8 @@ export default function position(DefaultCharacteristic: typeof Characteristic): 
 
         constructor() {
             super('Position', Position.UUID, {
-                format: Formats.STRING,
-                perms: [Perms.PAIRED_READ, Perms.NOTIFY],
+                format: 'string',
+                perms: ['pr' as Perms, 'ev' as Perms],
             });
         }
     };

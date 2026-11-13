@@ -2,7 +2,7 @@
     
 export = {
     checkConfig(parameter: any, defaultValue: boolean): any {
-        if (parameter && typeof parameter !== undefined) {
+        if (parameter !== undefined && parameter !== null) {
             return parameter as any;
         } else {
             return defaultValue;
@@ -10,7 +10,7 @@ export = {
     },
 
     checkArrayConfig(parameter: any, defaultValue: any[]): any[] {
-        if (parameter && typeof parameter !== undefined && Array.isArray(parameter)) {
+        if (Array.isArray(parameter)) {
             return parameter as any[];
         } else {
             return defaultValue;
@@ -18,7 +18,7 @@ export = {
     },
 
     checkStringArrayConfig(parameter: any, defaultValue: string[]): string[] {
-        if (parameter && typeof parameter !== undefined && Array.isArray(parameter) && parameter.every((value) => typeof value === 'string')) {
+        if (Array.isArray(parameter) && parameter.every((value) => typeof value === 'string')) {
             return parameter as string[];
         } else {
             return defaultValue;
@@ -26,7 +26,7 @@ export = {
     },
 
     checkStringConfig(parameter: any, defaultValue: string): string {
-        if (parameter && typeof parameter !== undefined && typeof parameter === 'string') {
+        if (typeof parameter === 'string' && parameter.length > 0) {
             return parameter as string;
         } else {
             return defaultValue;
@@ -34,7 +34,7 @@ export = {
     },
 
     checkNumberConfig(parameter: any, defaultValue: number): number {
-        if (parameter && typeof parameter !== undefined && typeof parameter === 'number') {
+        if (typeof parameter === 'number' && Number.isFinite(parameter)) {
             return parameter as number;
         } else {
             return defaultValue;
@@ -42,9 +42,9 @@ export = {
     },
 
     checkBooleanConfig(parameter: any, defaultValue: boolean): boolean {
-        if (parameter && typeof parameter !== undefined && typeof parameter === 'boolean') {
+        if (typeof parameter === 'boolean') {
             return parameter as boolean;
-        } else if (typeof parameter !== undefined && typeof parameter === 'string') {
+        } else if (typeof parameter === 'string') {
             switch (parameter.toLowerCase().trim()) {
                 case 'true':
                 case 'yes':
